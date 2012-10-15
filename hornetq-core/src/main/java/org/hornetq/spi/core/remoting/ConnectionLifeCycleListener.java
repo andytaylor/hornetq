@@ -20,16 +20,16 @@ import org.hornetq.spi.core.protocol.ProtocolType;
  *
  * @author <a href="mailto:tim.fox@jboss.com">Tim Fox</a>
  */
-public interface ConnectionLifeCycleListener
+public interface ConnectionLifeCycleListener<T>
 {
    /**
     * This method is used both by client connector creation and server connection creation through acceptors.
     * the acceptor will be set to null on client operations
     *
-    * @param The acceptor here will be always null on a client connection created event.
+    * @param acceptor The acceptor here will be always null on a client connection created event.
     * @param connection the connection that has been created
     */
-   void connectionCreated(Acceptor acceptor, Connection connection, ProtocolType protocol);
+   void connectionCreated(T acceptor, Connection connection, ProtocolType protocol);
 
    /**
     * called when a connection is destroyed.
