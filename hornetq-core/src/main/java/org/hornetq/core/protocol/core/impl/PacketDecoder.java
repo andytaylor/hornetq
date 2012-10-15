@@ -46,12 +46,8 @@ import static org.hornetq.core.protocol.core.impl.PacketImpl.SESS_PRODUCER_REQUE
 import static org.hornetq.core.protocol.core.impl.PacketImpl.SESS_QUEUEQUERY;
 import static org.hornetq.core.protocol.core.impl.PacketImpl.SESS_QUEUEQUERY_RESP;
 import static org.hornetq.core.protocol.core.impl.PacketImpl.SESS_RECEIVE_CONTINUATION;
-import static org.hornetq.core.protocol.core.impl.PacketImpl.SESS_RECEIVE_LARGE_MSG;
-import static org.hornetq.core.protocol.core.impl.PacketImpl.SESS_RECEIVE_MSG;
 import static org.hornetq.core.protocol.core.impl.PacketImpl.SESS_ROLLBACK;
-import static org.hornetq.core.protocol.core.impl.PacketImpl.SESS_SEND;
 import static org.hornetq.core.protocol.core.impl.PacketImpl.SESS_SEND_CONTINUATION;
-import static org.hornetq.core.protocol.core.impl.PacketImpl.SESS_SEND_LARGE;
 import static org.hornetq.core.protocol.core.impl.PacketImpl.SESS_START;
 import static org.hornetq.core.protocol.core.impl.PacketImpl.SESS_STOP;
 import static org.hornetq.core.protocol.core.impl.PacketImpl.SESS_UNIQUE_ADD_METADATA;
@@ -73,6 +69,8 @@ import static org.hornetq.core.protocol.core.impl.PacketImpl.SESS_XA_START;
 import static org.hornetq.core.protocol.core.impl.PacketImpl.SESS_XA_SUSPEND;
 import static org.hornetq.core.protocol.core.impl.PacketImpl.SUBSCRIBE_TOPOLOGY;
 import static org.hornetq.core.protocol.core.impl.PacketImpl.SUBSCRIBE_TOPOLOGY_V2;
+
+import java.io.Serializable;
 
 import org.hornetq.api.core.HornetQBuffer;
 import org.hornetq.core.HornetQCoreMessageBundle;
@@ -110,8 +108,6 @@ import org.hornetq.core.protocol.core.impl.wireformat.SessionProducerCreditsMess
 import org.hornetq.core.protocol.core.impl.wireformat.SessionQueueQueryMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.SessionQueueQueryResponseMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.SessionReceiveContinuationMessage;
-import org.hornetq.core.protocol.core.impl.wireformat.SessionReceiveLargeMessage;
-import org.hornetq.core.protocol.core.impl.wireformat.SessionReceiveMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.SessionRequestProducerCreditsMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.SessionSendContinuationMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.SessionUniqueAddMetaDataMessage;
@@ -130,8 +126,6 @@ import org.hornetq.core.protocol.core.impl.wireformat.SessionXASetTimeoutRespons
 import org.hornetq.core.protocol.core.impl.wireformat.SessionXAStartMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.SubscribeClusterTopologyUpdatesMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.SubscribeClusterTopologyUpdatesMessageV2;
-
-import java.io.Serializable;
 
 /**
  * A PacketDecoder
