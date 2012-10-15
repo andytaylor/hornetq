@@ -10,8 +10,13 @@ import org.hornetq.core.journal.impl.JournalConstants;
  * Time: 10:31 AM
  * To change this template use File | Settings | File Templates.
  */
-public class HornetQDefaultConfiguration
+public final class HornetQDefaultConfiguration
 {
+   private HornetQDefaultConfiguration()
+   {
+      // Utility class
+   }
+
    //shared by client and core/server
    public static final long DEFAULT_CLIENT_FAILURE_CHECK_PERIOD = 30000;
 
