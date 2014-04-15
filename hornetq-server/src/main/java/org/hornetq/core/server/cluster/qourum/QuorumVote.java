@@ -47,4 +47,6 @@ public interface QuorumVote<T>
     * @return the voting decision
     */
    T getDecision();
+
+   void allVotesCast();
 }

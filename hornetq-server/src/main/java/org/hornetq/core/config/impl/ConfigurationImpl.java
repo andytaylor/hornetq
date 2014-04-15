@@ -38,6 +38,7 @@ import org.hornetq.core.config.CoreQueueConfiguration;
 import org.hornetq.core.config.DivertConfiguration;
 import org.hornetq.core.security.Role;
 import org.hornetq.core.server.JournalType;
+import org.hornetq.core.server.cluster.ha.HAPolicy;
 import org.hornetq.core.server.group.impl.GroupingHandlerConfiguration;
 import org.hornetq.core.settings.impl.AddressSettings;
 
@@ -232,6 +233,8 @@ public class ConfigurationImpl implements Configuration
    private BackupStrategy backupStrategy;
 
    private long journalLockAcquisitionTimeout = HornetQDefaultConfiguration.getDefaultJournalLockAcquisitionTimeout();
+
+   private HAPolicy haPolicy;
 
    // Public -------------------------------------------------------------------------
 
@@ -1555,5 +1558,17 @@ public class ConfigurationImpl implements Configuration
    public long getJournalLockAcquisitionTimeout()
    {
       return journalLockAcquisitionTimeout;
+   }
+
+   @Override
+   public HAPolicy getHAPolicy()
+   {
+      return haPolicy;
+   }
+
+   @Override
+   public void setHAPolicy(HAPolicy haPolicy)
+   {
+      this.haPolicy = haPolicy;
    }
 }

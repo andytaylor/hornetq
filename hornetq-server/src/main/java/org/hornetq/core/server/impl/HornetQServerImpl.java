@@ -132,6 +132,7 @@ import org.hornetq.core.server.cluster.BackupManager;
 import org.hornetq.core.server.cluster.ClusterConnection;
 import org.hornetq.core.server.cluster.ClusterManager;
 import org.hornetq.core.server.cluster.Transformer;
+import org.hornetq.core.server.cluster.ha.HAManager;
 import org.hornetq.core.server.cluster.qourum.SharedNothingBackupQuorum;
 import org.hornetq.core.server.group.GroupingHandler;
 import org.hornetq.core.server.group.impl.GroupingHandlerConfiguration;
@@ -290,6 +291,8 @@ public class HornetQServerImpl implements HornetQServer
 
    private NodeManager nodeManager;
 
+   private HAManager haManager;
+
    // Used to identify the server on tests... useful on debugging testcases
    private String identity;
 
@@ -303,8 +306,6 @@ public class HornetQServerImpl implements HornetQServer
    private boolean cancelFailBackChecker;
 
    private final HornetQServer parentServer;
-
-   private Map<String, HornetQServer> backupServers = new HashMap<>();
 
    private ClientSessionFactoryInternal scaleDownClientSessionFactory = null;
 
@@ -435,6 +436,8 @@ public class HornetQServerImpl implements HornetQServer
             createNodeManager(configuration.getJournalDirectory(), configuration.getBackupGroupName(), false);
 
          nodeManager.start();
+
+         haManager = new HAManager(configuration.getHAPolicy(), securityManager, this, configuration.getBackupServerConfigurations());
 
          HornetQServerLogger.LOGGER.serverStarting((configuration.isBackup() ? "backup" : "live"), configuration);
 
@@ -589,11 +592,7 @@ public class HornetQServerImpl implements HornetQServer
     */
    private void stop(boolean failoverOnServerShutdown, final boolean criticalIOError, boolean failingBack) throws Exception
    {
-      for (HornetQServer hornetQServer : backupServers.values())
-      {
-         hornetQServer.stop();
-      }
-      backupServers.clear();
+      haManager.stopAllBackups();
       if (!failingBack)
       {
          synchronized (failbackCheckerGuard)
@@ -1875,35 +1874,12 @@ public class HornetQServerImpl implements HornetQServer
          // We can only do this after everything is started otherwise we may get nasty races with expired messages
          postOffice.startExpiryScanner();
 
-
          //now start any backup servers
-         startBackupServers(configuration, backupServers);
+         haManager.start();
       }
       else
       {
          activationLatch.countDown();
-      }
-   }
-
-   protected void startBackupServers(Configuration configuration, Map<String, HornetQServer> backupServers)
-   {
-      Set<Configuration> backupServerConfigurations = configuration.getBackupServerConfigurations();
-      for (Configuration backupServerConfiguration : backupServerConfigurations)
-      {
-         HornetQServer backup = new HornetQServerImpl(backupServerConfiguration, null, securityManager, this);
-         backupServers.put(backupServerConfiguration.getName(), backup);
-      }
-
-      for (HornetQServer hornetQServer : backupServers.values())
-      {
-         try
-         {
-            hornetQServer.start();
-         }
-         catch (Exception e)
-         {
-            e.printStackTrace();
-         }
       }
    }
 

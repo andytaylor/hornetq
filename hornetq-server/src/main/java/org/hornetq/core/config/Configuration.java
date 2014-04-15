@@ -23,6 +23,7 @@ import org.hornetq.api.core.SimpleString;
 import org.hornetq.api.core.TransportConfiguration;
 import org.hornetq.core.security.Role;
 import org.hornetq.core.server.JournalType;
+import org.hornetq.core.server.cluster.ha.HAPolicy;
 import org.hornetq.core.server.group.impl.GroupingHandlerConfiguration;
 import org.hornetq.core.settings.impl.AddressSettings;
 
@@ -1015,4 +1016,8 @@ public interface Configuration extends Serializable
    void setJournalLockAcquisitionTimeout(long journalLockAcquisitionTimeout);
 
    long getJournalLockAcquisitionTimeout();
+
+   HAPolicy getHAPolicy();
+
+   void setHAPolicy(HAPolicy haPolicy);
 }

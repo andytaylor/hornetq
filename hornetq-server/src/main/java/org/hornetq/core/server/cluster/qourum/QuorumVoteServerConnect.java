@@ -109,11 +109,17 @@ public class QuorumVoteServerConnect implements QuorumVote<Boolean>
    /**
     * the decision voted for
     *
-    * @return the dewcision
+    * @return the decision
     */
    public Boolean getDecision()
    {
       return decision;
+   }
+
+   @Override
+   public void allVotesCast()
+   {
+
    }
 
 }

@@ -1,7 +1,6 @@
 <configuration xmlns="urn:hornetq"
             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
             xsi:schemaLocation="urn:hornetq /schema/hornetq-configuration.xsd">
-   
 
    <bindings-directory>target/server0/data/messaging/bindings</bindings-directory>
 
@@ -55,8 +54,28 @@
          <max-hops>1</max-hops>
          <discovery-group-ref discovery-group-name="my-discovery-group"/>
       </cluster-connection>
-   </cluster-connections>
-   
+   </cluster-connections>  ]
+
+
+   <!--<backup>true</backup>
+   <backup-group-name>foo</backup-group-name>
+   <check-for-live-server>true</check-for-live-server>
+   <shared-store>true</shared-store>
+   <scale-down-clustername></scale-down-clustername>
+   <scale-down></scale-down>
+   <scale-down-group-name></scale-down-group-name>-->
+
+   <ha-policy>
+      <request-backup>true</request-backup>
+      <backup-request-attempts>-1</backup-request-attempts>
+      <backup-request-retry-interval>5000</backup-request-retry-interval>
+      <backup-request-type>SHARED_STORE</backup-request-type><!--or REPLICATED-->
+      <allow-backup-request>true</allow-backup-request>
+      <max-backups>2</max-backups>
+      <backup-port-offset>100</backup-port-offset>
+      <backup-strategy>SCALE_DOWN</backup-strategy>
+   </ha-policy>
+
    <!-- Other config -->
 
    <security-settings>
