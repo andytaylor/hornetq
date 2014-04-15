@@ -13,6 +13,10 @@
 package org.hornetq.core.server.cluster.qourum;
 
 
+import org.hornetq.api.core.HornetQBuffer;
+
+import java.util.Map;
+
 /**
  * a simpel yes.no vote
  */
@@ -38,5 +42,11 @@ public final class BooleanVote implements Vote<Boolean>
    public Boolean getVote()
    {
       return vote;
+   }
+
+   @Override
+   public Map<String, Object> getVoteMap()
+   {
+      return null;
    }
 }

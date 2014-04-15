@@ -13,6 +13,7 @@
 package org.hornetq.api.core.management;
 
 import javax.management.MBeanOperationInfo;
+import java.util.Map;
 
 /**
  * A HornetQServerControl is used to manage HornetQ servers.
@@ -610,5 +611,7 @@ public interface HornetQServerControl
    void forceFailover() throws Exception;
 
    void updateDuplicateIdCache(String address, Object[] ids) throws Exception;
+
+   void quorumVote(String handler, Map<String, Object> voteParams);
 }
 

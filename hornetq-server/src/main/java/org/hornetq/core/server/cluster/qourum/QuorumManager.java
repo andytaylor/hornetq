@@ -25,12 +25,16 @@ import org.hornetq.api.core.DiscoveryGroupConfiguration;
 import org.hornetq.api.core.HornetQException;
 import org.hornetq.api.core.Interceptor;
 import org.hornetq.api.core.Pair;
+import org.hornetq.api.core.SimpleString;
 import org.hornetq.api.core.TransportConfiguration;
+import org.hornetq.api.core.client.ClientMessage;
 import org.hornetq.api.core.client.ClientSession;
 import org.hornetq.api.core.client.ClientSessionFactory;
 import org.hornetq.api.core.client.ClusterTopologyListener;
 import org.hornetq.api.core.client.HornetQClient;
 import org.hornetq.api.core.client.TopologyMember;
+import org.hornetq.api.core.management.ManagementHelper;
+import org.hornetq.api.core.management.ResourceNames;
 import org.hornetq.core.client.impl.ClientSessionFactoryInternal;
 import org.hornetq.core.client.impl.ServerLocatorImpl;
 import org.hornetq.core.client.impl.ServerLocatorInternal;
@@ -70,6 +74,8 @@ public final class QuorumManager implements ClusterTopologyListener, HornetQComp
     * any currently running runnables.
     */
    private final Map<QuorumVote, VoteRunnableHolder> voteRunnables = new HashMap<>();
+
+   private final Map<SimpleString, QuorumVoteHandler> handlers = new HashMap<>();
 
    private HornetQServer server;
 
@@ -357,6 +363,13 @@ public final class QuorumManager implements ClusterTopologyListener, HornetQComp
       }
    }
 
+   public void vote(String handler, Map<String, Object> voteParams)
+   {
+      System.out.println("org.hornetq.core.server.cluster.qourum.QuorumManager.vote " + server.getIdentity());
+      QuorumVoteHandler quorumVoteHandler = handlers.get(new SimpleString(handler));
+      Vote vote = quorumVoteHandler.vote(voteParams);
+   }
+
    /**
     * must be called by the quorum when it is happy on an outcome. only one vote can take place at anyone time for a
     * specific quorum
@@ -427,6 +440,11 @@ public final class QuorumManager implements ClusterTopologyListener, HornetQComp
       return tcConfigs;
    }
 
+   public void registerQuorumHandler(QuorumVoteHandler quorumVoteHandler)
+   {
+      handlers.put(quorumVoteHandler.getQuorumName(), quorumVoteHandler);
+   }
+
    private final class VoteRunnableHolder
    {
       private QuorumVote quorumVote;
@@ -486,8 +504,10 @@ public final class QuorumManager implements ClusterTopologyListener, HornetQComp
                   if (vote.isRequestServerVote())
                   {
                      requestServerVote = true;
-                     session.
-                     //todo ask the cluster
+                     ClientMessage message = session.createMessage(false);
+                     ManagementHelper.putOperationInvocation(message, ResourceNames.CORE_SERVER, "quorumVote", quorumVote.getName().toString(), vote.getVoteMap());
+                           message.putStringProperty(ManagementHelper.HDR_QUORUM_VOTE_PROPOSAL, quorumVote.getName());
+                     session.createProducer(server.getConfiguration().getManagementAddress()).send(message);
                   }
                   else
                   {
@@ -503,6 +523,7 @@ public final class QuorumManager implements ClusterTopologyListener, HornetQComp
          }
          catch (Exception e)
          {
+            e.printStackTrace();
             // no-op
          }
          finally

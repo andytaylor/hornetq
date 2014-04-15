@@ -38,9 +38,11 @@ public class AutomaticColocatedQuorumVoteTest extends ServiceTestBase
       TransportConfiguration liveAcceptor1 = getAcceptorTransportConfiguration(1);
       Configuration liveConfiguration0 = getConfiguration(liveConnector0, liveAcceptor0, liveConnector1);
       HornetQServer server0 = new HornetQServerImpl(liveConfiguration0);
+      server0.setIdentity("server0");
       server0.start();
       Configuration liveConfiguration1 = getConfiguration(liveConnector1, liveAcceptor1, liveConnector0);
       HornetQServer server1 = new HornetQServerImpl(liveConfiguration1);
+      server1.setIdentity("server1");
       server1.start();
       Thread.sleep(30000);
    }

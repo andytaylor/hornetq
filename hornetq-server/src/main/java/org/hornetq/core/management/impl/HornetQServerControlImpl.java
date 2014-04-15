@@ -1857,6 +1857,19 @@ public class HornetQServerControlImpl extends AbstractControl implements HornetQ
          blockOnIO();
       }
    }
+
+   public void quorumVote(String handler, Map<String, Object> voteParams)
+   {
+      clearIO();
+      try
+      {
+         server.getClusterManager().getQuorumManager().vote(handler, voteParams);
+      }
+      finally
+      {
+         blockOnIO();
+      }
+   }
    // NotificationEmitter implementation ----------------------------
 
    public void removeNotificationListener(final NotificationListener listener,

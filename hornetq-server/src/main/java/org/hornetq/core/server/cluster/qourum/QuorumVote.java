@@ -12,6 +12,8 @@
  */
 package org.hornetq.core.server.cluster.qourum;
 
+import org.hornetq.api.core.SimpleString;
+
 /**
  * the vote itself. the vote can be decided by the enquirer or sent out to each node in the quorum.
  */
@@ -49,4 +51,6 @@ public interface QuorumVote<T>
    T getDecision();
 
    void allVotesCast();
+
+   SimpleString getName();
 }

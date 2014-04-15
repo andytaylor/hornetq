@@ -75,6 +75,10 @@ public final class ManagementHelper
 
    public static final SimpleString HDR_PROPOSAL_ALT_VALUE = new SimpleString("_JBM_ProposalAltValue");
 
+   public static final SimpleString HDR_QUORUM_VOTE_PROPOSAL = new SimpleString("_HQ_QourumVoteProposal");
+
+   public static final SimpleString HDR_QUORUM_VOTE = new SimpleString("_HQ_QourumVote");
+
    // Attributes ----------------------------------------------------
 
    // Static --------------------------------------------------------

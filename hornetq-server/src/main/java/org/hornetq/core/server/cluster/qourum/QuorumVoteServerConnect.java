@@ -13,6 +13,8 @@
 
 package org.hornetq.core.server.cluster.qourum;
 
+import org.hornetq.api.core.SimpleString;
+
 import java.util.concurrent.CountDownLatch;
 
 /**
@@ -120,6 +122,12 @@ public class QuorumVoteServerConnect implements QuorumVote<Boolean>
    public void allVotesCast()
    {
 
+   }
+
+   @Override
+   public SimpleString getName()
+   {
+      return null;
    }
 
 }

@@ -13,6 +13,10 @@
 
 package org.hornetq.core.server.cluster.qourum;
 
+import org.hornetq.api.core.HornetQBuffer;
+
+import java.util.Map;
+
 /**
  * the vote itself
  */
@@ -28,4 +32,6 @@ public interface Vote<T>
     * @return the vote
     */
    T getVote();
+
+   Map<String,Object> getVoteMap();
 }

@@ -12,16 +12,22 @@
  */
 package org.hornetq.core.server.cluster.ha;
 
+import org.hornetq.api.core.HornetQBuffer;
+import org.hornetq.api.core.SimpleString;
 import org.hornetq.api.core.client.ClusterTopologyListener;
 import org.hornetq.api.core.client.TopologyMember;
+import org.hornetq.core.client.impl.TopologyMemberImpl;
 import org.hornetq.core.config.Configuration;
 import org.hornetq.core.server.HornetQServer;
 import org.hornetq.core.server.cluster.ClusterConnection;
+import org.hornetq.core.server.cluster.qourum.QuorumManager;
 import org.hornetq.core.server.cluster.qourum.QuorumVote;
+import org.hornetq.core.server.cluster.qourum.QuorumVoteHandler;
 import org.hornetq.core.server.cluster.qourum.Vote;
 import org.hornetq.core.server.impl.HornetQServerImpl;
 import org.hornetq.spi.core.security.HornetQSecurityManager;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -29,6 +35,8 @@ import java.util.concurrent.TimeUnit;
 
 public class HAManager implements ClusterTopologyListener
 {
+   public static final SimpleString REQUEST_BACKUP_QUORUM_VOTE = new SimpleString("RequestBackupQuorumVote");
+
    private final HAPolicy haPolicy;
 
    private final HornetQSecurityManager securityManager;
@@ -49,6 +57,7 @@ public class HAManager implements ClusterTopologyListener
 
    public void start()
    {
+      server.getClusterManager().getQuorumManager().registerQuorumHandler(new RequestBackupQuorumVoteHandler());
       if (backupServerConfigurations != null)
       {
          for (Configuration configuration : backupServerConfigurations)
@@ -105,18 +114,45 @@ public class HAManager implements ClusterTopologyListener
       System.out.println("org.hornetq.core.server.cluster.ha.HAManager.nodeDown");
    }
 
+   private final class RequestBackupQuorumVoteHandler implements QuorumVoteHandler
+   {
+      @Override
+      public Vote vote(Map<String, Object> voteParams)
+      {
+         Collection<TopologyMemberImpl> members = server.getClusterManager().getDefaultConnection(null).getTopology().getMembers();
+         for (TopologyMemberImpl member : members)
+         {
+            System.out.println("org.hornetq.core.server.cluster.ha.HAManager.RequestBackupQuorumVoteHandler.vote");
+         }
+         return null;
+      }
+
+      @Override
+      public SimpleString getQuorumName()
+      {
+         return REQUEST_BACKUP_QUORUM_VOTE;
+      }
+   }
+
    private final class RequestBackupQuorumVote implements QuorumVote
    {
+      private final long id;
+      public RequestBackupQuorumVote()
+      {
+         super();
+         id = server.getStorageManager().generateUniqueID();
+      }
+
       @Override
       public Vote connected()
       {
-         return new RequestBackupVote();
+         return new RequestBackupVote(id);
       }
 
       @Override
       public Vote notConnected()
       {
-         return new RequestBackupVote();
+         return new RequestBackupVote(id);
       }
 
       @Override
@@ -143,10 +179,23 @@ public class HAManager implements ClusterTopologyListener
             }
          }, haPolicy.getBackupRequestRetryInterval(), TimeUnit.MILLISECONDS);
       }
+
+      @Override
+      public SimpleString getName()
+      {
+         return REQUEST_BACKUP_QUORUM_VOTE;
+      }
    }
 
    class RequestBackupVote implements Vote
    {
+      private long id;
+
+      public RequestBackupVote(long id)
+      {
+         this.id = id;
+      }
+
       @Override
       public boolean isRequestServerVote()
       {
@@ -157,6 +206,14 @@ public class HAManager implements ClusterTopologyListener
       public Object getVote()
       {
          return null;
+      }
+
+      @Override
+      public Map<String, Object> getVoteMap()
+      {
+         HashMap<String, Object> map = new HashMap<>();
+         map.put("ID", id);
+         return map;
       }
    }
 }
