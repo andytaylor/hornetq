@@ -1858,12 +1858,12 @@ public class HornetQServerControlImpl extends AbstractControl implements HornetQ
       }
    }
 
-   public void quorumVote(String handler, Map<String, Object> voteParams)
+   public Map quorumVote(String handler, Map<String, Object> voteParams)
    {
       clearIO();
       try
       {
-         server.getClusterManager().getQuorumManager().vote(handler, voteParams);
+         return server.getClusterManager().getQuorumManager().vote(handler, voteParams);
       }
       finally
       {

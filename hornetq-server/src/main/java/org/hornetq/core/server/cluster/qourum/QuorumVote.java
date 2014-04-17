@@ -12,20 +12,31 @@
  */
 package org.hornetq.core.server.cluster.qourum;
 
+import java.util.Map;
+
 import org.hornetq.api.core.SimpleString;
 
 /**
  * the vote itself. the vote can be decided by the enquirer or sent out to each node in the quorum.
  */
-public interface QuorumVote<T>
+public abstract class QuorumVote<T, T2>
 {
+   private long id;
+   private SimpleString name;
+
+   public QuorumVote(long id, SimpleString name)
+   {
+      this.id = id;
+      this.name = name;
+   }
+
    /**
     * called by the {@link org.hornetq.core.server.cluster.qourum.QuorumManager} when one of teh nodes in the quorum is
     * successfully connected to. The QuorumVote can then decide whether or not a decision can be made with just that information.
     *
     * @return the vote to use
     */
-   Vote connected();
+   abstract public Vote connected();
 
    /**
     * called by the {@link org.hornetq.core.server.cluster.qourum.QuorumManager} fails to connect to a node in the quorum.
@@ -33,7 +44,7 @@ public interface QuorumVote<T>
     * cannot cannot be asked.
     * @return the vote to use
     */
-   Vote notConnected();
+   abstract public Vote notConnected();
 
    /**
     * called by the {@link org.hornetq.core.server.cluster.qourum.QuorumManager} when a vote can be made, either from the
@@ -41,16 +52,31 @@ public interface QuorumVote<T>
     *
     * @param vote the vote to make.
     */
-   void vote(Vote vote);
+   abstract public void vote(Vote<T2> vote);
 
    /**
     * get the decion of the vote
     *
     * @return the voting decision
     */
-   T getDecision();
+   abstract public T getDecision();
 
-   void allVotesCast();
+   abstract public void allVotesCast();
 
-   SimpleString getName();
+   public SimpleString getName()
+   {
+      return name;
+   }
+
+   abstract public Vote createVote(Map<String, Object> voteMap);
+
+   public boolean isCurrentVote(Vote vote)
+   {
+      return id == vote.getVoteID();
+   }
+
+   public long getVoteID()
+   {
+      return id;
+   }
 }

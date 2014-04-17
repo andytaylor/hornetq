@@ -14,14 +14,17 @@
 package org.hornetq.core.server.cluster.qourum;
 
 import org.hornetq.api.core.SimpleString;
+import org.hornetq.core.persistence.StorageManager;
 
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 /**
  * A Qourum Vote for deciding if a replicated backup should become live.
  */
-public class QuorumVoteServerConnect implements QuorumVote<Boolean>
+public class QuorumVoteServerConnect extends QuorumVote<Boolean, Boolean>
 {
+   private static final SimpleString LIVE_FAILOVER_VOTE = new SimpleString("LIVE_FAILOVER)VOTE");
    private final CountDownLatch latch;
 
    private double votesNeeded;
@@ -39,8 +42,9 @@ public class QuorumVoteServerConnect implements QuorumVote<Boolean>
     * 5 remaining nodes would be 4/2 = 3 vote needed
     * 6 remaining nodes would be 5/2 = 3 vote needed
     * */
-   public QuorumVoteServerConnect(CountDownLatch latch, int size)
+   public QuorumVoteServerConnect(CountDownLatch latch, int size, StorageManager storageManager)
    {
+      super(storageManager.generateUniqueID(), LIVE_FAILOVER_VOTE);
       this.latch = latch;
       //we don't count ourself
       int actualSize = size - 1;
@@ -68,7 +72,7 @@ public class QuorumVoteServerConnect implements QuorumVote<Boolean>
    @Override
    public Vote connected()
    {
-      return new BooleanVote(true);
+      return new BooleanVote(true, getVoteID());
    }
 
    /**
@@ -78,7 +82,7 @@ public class QuorumVoteServerConnect implements QuorumVote<Boolean>
    @Override
    public Vote notConnected()
    {
-      return new BooleanVote(false);
+      return new BooleanVote(false, getVoteID());
    }
 
    /**
@@ -92,7 +96,7 @@ public class QuorumVoteServerConnect implements QuorumVote<Boolean>
     * @param vote the vote to make.
     */
    @Override
-   public synchronized void vote(Vote vote)
+   public synchronized void vote(Vote<Boolean> vote)
    {
       if (decision)
          return;
@@ -128,6 +132,18 @@ public class QuorumVoteServerConnect implements QuorumVote<Boolean>
    public SimpleString getName()
    {
       return null;
+   }
+
+   @Override
+   public Vote createVote(Map<String, Object> voteMap)
+   {
+      return null;
+   }
+
+   @Override
+   public boolean isCurrentVote(Vote vote)
+   {
+      return false;
    }
 
 }

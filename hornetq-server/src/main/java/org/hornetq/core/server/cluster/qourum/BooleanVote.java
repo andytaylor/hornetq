@@ -14,22 +14,20 @@ package org.hornetq.core.server.cluster.qourum;
 
 
 import org.hornetq.api.core.HornetQBuffer;
+import org.hornetq.api.core.SimpleString;
 
 import java.util.Map;
 
 /**
  * a simpel yes.no vote
  */
-public final class BooleanVote implements Vote<Boolean>
+public final class BooleanVote extends Vote<Boolean>
 {
-   public static final BooleanVote TRUE_VOTE = new BooleanVote(true);
-
-   public static final BooleanVote FALSE_VOTE = new BooleanVote(false);
-
    private boolean vote;
 
-   public BooleanVote(boolean vote)
+   public BooleanVote(boolean vote, long id)
    {
+      super(id);
       this.vote = vote;
    }
 

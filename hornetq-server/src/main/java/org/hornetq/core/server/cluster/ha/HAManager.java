@@ -12,23 +12,25 @@
  */
 package org.hornetq.core.server.cluster.ha;
 
-import org.hornetq.api.core.HornetQBuffer;
+import org.hornetq.api.core.Pair;
 import org.hornetq.api.core.SimpleString;
+import org.hornetq.api.core.TransportConfiguration;
 import org.hornetq.api.core.client.ClusterTopologyListener;
 import org.hornetq.api.core.client.TopologyMember;
 import org.hornetq.core.client.impl.TopologyMemberImpl;
 import org.hornetq.core.config.Configuration;
 import org.hornetq.core.server.HornetQServer;
-import org.hornetq.core.server.cluster.ClusterConnection;
-import org.hornetq.core.server.cluster.qourum.QuorumManager;
 import org.hornetq.core.server.cluster.qourum.QuorumVote;
 import org.hornetq.core.server.cluster.qourum.QuorumVoteHandler;
 import org.hornetq.core.server.cluster.qourum.Vote;
 import org.hornetq.core.server.impl.HornetQServerImpl;
 import org.hornetq.spi.core.security.HornetQSecurityManager;
 
-import java.util.Collection;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -102,6 +104,11 @@ public class HAManager implements ClusterTopologyListener
       backupServers.clear();
    }
 
+   private void requestBackup(Pair<TransportConfiguration, TransportConfiguration> connector, Long backupSize)
+   {
+
+   }
+
    @Override
    public void nodeUP(TopologyMember member, boolean last)
    {
@@ -119,12 +126,7 @@ public class HAManager implements ClusterTopologyListener
       @Override
       public Vote vote(Map<String, Object> voteParams)
       {
-         Collection<TopologyMemberImpl> members = server.getClusterManager().getDefaultConnection(null).getTopology().getMembers();
-         for (TopologyMemberImpl member : members)
-         {
-            System.out.println("org.hornetq.core.server.cluster.ha.HAManager.RequestBackupQuorumVoteHandler.vote");
-         }
-         return null;
+         return new RequestBackupVote((Long) voteParams.get("ID"), backupServers.size(), server.getNodeID().toString());
       }
 
       @Override
@@ -134,50 +136,68 @@ public class HAManager implements ClusterTopologyListener
       }
    }
 
-   private final class RequestBackupQuorumVote implements QuorumVote
+   private final class RequestBackupQuorumVote extends QuorumVote<Pair<String, Long>, Pair<String, Long>>
    {
-      private final long id;
+      private final List<Pair<String, Long>> nodes = new ArrayList<>();
+
       public RequestBackupQuorumVote()
       {
-         super();
-         id = server.getStorageManager().generateUniqueID();
+         super(server.getStorageManager().generateUniqueID(), REQUEST_BACKUP_QUORUM_VOTE);
       }
 
       @Override
       public Vote connected()
       {
-         return new RequestBackupVote(id);
+         return new RequestBackupVote(getVoteID());
       }
 
       @Override
       public Vote notConnected()
       {
-         return new RequestBackupVote(id);
+         return new RequestBackupVote(getVoteID());
       }
 
       @Override
-      public void vote(Vote vote)
+      public void vote(Vote<Pair<String, Long>> vote)
       {
-         System.out.println("org.hornetq.core.server.cluster.ha.HAManager.RequestBackupQuorumVote.vote");
+         nodes.add(vote.getVote());
       }
 
       @Override
-      public Object getDecision()
+      public Pair<String, Long> getDecision()
       {
-         return null;
+         Collections.sort(nodes, new Comparator<Pair<String, Long>>()
+         {
+            @Override
+            public int compare(Pair<String, Long> o1, Pair<String, Long> o2)
+            {
+               return o1.getB().compareTo(o2.getB());
+            }
+         });
+         return nodes.get(0);
       }
 
       @Override
       public void allVotesCast()
       {
-         server.getScheduledPool().schedule(new Runnable()
+         if (nodes.size() > 0)
          {
-            @Override
-            public void run()
+            Pair<String, Long> decision = getDecision();
+            TopologyMemberImpl member = server.getClusterManager().getDefaultConnection(null).getTopology().getMember(decision.getA());
+            requestBackup(member.getConnector(), decision.getB());
+         }
+         else
+         {
+            nodes.clear();
+            server.getScheduledPool().schedule(new Runnable()
             {
-               server.getClusterManager().getQuorumManager().vote(RequestBackupQuorumVote.this);
-            }
-         }, haPolicy.getBackupRequestRetryInterval(), TimeUnit.MILLISECONDS);
+               @Override
+               public void run()
+               {
+                  server.getClusterManager().getQuorumManager().vote(RequestBackupQuorumVote.this);
+               }
+            }, haPolicy.getBackupRequestRetryInterval(), TimeUnit.MILLISECONDS);
+         }
       }
 
       @Override
@@ -185,15 +205,38 @@ public class HAManager implements ClusterTopologyListener
       {
          return REQUEST_BACKUP_QUORUM_VOTE;
       }
+
+      @Override
+      public Vote createVote(Map voteMap)
+      {
+         return new RequestBackupVote(voteMap);
+      }
+
    }
 
-   class RequestBackupVote implements Vote
+   class RequestBackupVote extends Vote<Pair<String, Long>>
    {
-      private long id;
+      private long backupsSize;
+      private String nodeID;
 
       public RequestBackupVote(long id)
       {
-         this.id = id;
+         super(id);
+         backupsSize = -1;
+      }
+
+      public RequestBackupVote(Long id, int backupsSize, String nodeID)
+      {
+         super(id);
+         this.backupsSize = backupsSize;
+         this.nodeID = nodeID;
+      }
+
+      public RequestBackupVote(Map<String, Object> voteMap)
+      {
+         super((Long) voteMap.get("ID"));
+         backupsSize = (Long) voteMap.get("BACKUP_SIZE");
+         nodeID = (String) voteMap.get("NODEID");
       }
 
       @Override
@@ -203,16 +246,20 @@ public class HAManager implements ClusterTopologyListener
       }
 
       @Override
-      public Object getVote()
+      public Pair<String, Long> getVote()
       {
-         return null;
+         return new Pair<>(nodeID, backupsSize);
       }
 
       @Override
       public Map<String, Object> getVoteMap()
       {
-         HashMap<String, Object> map = new HashMap<>();
-         map.put("ID", id);
+         Map<String, Object> map = super.getVoteMap();
+         map.put("BACKUP_SIZE", backupsSize);
+         if (nodeID != null)
+         {
+            map.put("NODEID", nodeID);
+         }
          return map;
       }
    }

@@ -612,6 +612,6 @@ public interface HornetQServerControl
 
    void updateDuplicateIdCache(String address, Object[] ids) throws Exception;
 
-   void quorumVote(String handler, Map<String, Object> voteParams);
+   Map quorumVote(String handler, Map<String, Object> voteParams);
 }
 

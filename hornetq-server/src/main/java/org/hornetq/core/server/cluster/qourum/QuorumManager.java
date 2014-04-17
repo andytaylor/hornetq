@@ -28,6 +28,7 @@ import org.hornetq.api.core.Pair;
 import org.hornetq.api.core.SimpleString;
 import org.hornetq.api.core.TransportConfiguration;
 import org.hornetq.api.core.client.ClientMessage;
+import org.hornetq.api.core.client.ClientRequestor;
 import org.hornetq.api.core.client.ClientSession;
 import org.hornetq.api.core.client.ClientSessionFactory;
 import org.hornetq.api.core.client.ClusterTopologyListener;
@@ -363,11 +364,12 @@ public final class QuorumManager implements ClusterTopologyListener, HornetQComp
       }
    }
 
-   public void vote(String handler, Map<String, Object> voteParams)
+   public Map vote(String handler, Map<String, Object> voteParams)
    {
       System.out.println("org.hornetq.core.server.cluster.qourum.QuorumManager.vote " + server.getIdentity());
       QuorumVoteHandler quorumVoteHandler = handlers.get(new SimpleString(handler));
       Vote vote = quorumVoteHandler.vote(voteParams);
+      return vote.getVoteMap();
    }
 
    /**
@@ -504,10 +506,22 @@ public final class QuorumManager implements ClusterTopologyListener, HornetQComp
                   if (vote.isRequestServerVote())
                   {
                      requestServerVote = true;
+                     ClientRequestor requestor = new ClientRequestor(session, "jms.queue.hornetq.management");
                      ClientMessage message = session.createMessage(false);
                      ManagementHelper.putOperationInvocation(message, ResourceNames.CORE_SERVER, "quorumVote", quorumVote.getName().toString(), vote.getVoteMap());
                            message.putStringProperty(ManagementHelper.HDR_QUORUM_VOTE_PROPOSAL, quorumVote.getName());
-                     session.createProducer(server.getConfiguration().getManagementAddress()).send(message);
+                     session.start();
+                     ClientMessage reply = requestor.request(message);
+                     Object result = ManagementHelper.getResult(reply);
+                     if (result != null)
+                     {
+                        Map<String, Object> voteMap = (Map<String, Object>) result;
+                        vote = quorumVote.createVote(voteMap);
+                        if (quorumVote.isCurrentVote(vote))
+                        {
+                           quorumVote.vote(vote);
+                        }
+                     }
                   }
                   else
                   {
@@ -536,10 +550,7 @@ public final class QuorumManager implements ClusterTopologyListener, HornetQComp
             {
                //ignore
             }
-            if (!requestServerVote)
-            {
-               QuorumManager.this.votingComplete(quorumVote);
-            }
+            QuorumManager.this.votingComplete(quorumVote);
          }
       }
 

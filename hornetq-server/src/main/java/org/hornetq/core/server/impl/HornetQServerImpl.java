@@ -2548,7 +2548,7 @@ public class HornetQServerImpl implements HornetQServer
             {
                if (closed)
                   return;
-               backupQuorum = new SharedNothingBackupQuorum(nodeManager, scheduledPool);
+               backupQuorum = new SharedNothingBackupQuorum(storageManager, nodeManager, scheduledPool);
                clusterManager.getQuorumManager().registerQuorum(backupQuorum);
             }
 

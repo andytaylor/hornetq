@@ -15,23 +15,43 @@ package org.hornetq.core.server.cluster.qourum;
 
 import org.hornetq.api.core.HornetQBuffer;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
  * the vote itself
  */
-public interface Vote<T>
+public abstract class Vote<T>
 {
+   public static final String ID = "ID";
+
+   private long id;
+
+   public Vote(long id)
+   {
+      this.id = id;
+   }
+
+   public Map<String,Object> getVoteMap()
+   {
+      HashMap<String, Object> map = new HashMap<>();
+      map.put(ID, id);
+      return map;
+   }
+
    //whether or note we should ask the target server for an answer or decide ourselves, for instance if we couldn't
    //connect to the node in the first place.
-   boolean isRequestServerVote();
+   abstract public boolean isRequestServerVote();
 
    /**
     * return the vote
     *
     * @return the vote
     */
-   T getVote();
+   abstract public T getVote();
 
-   Map<String,Object> getVoteMap();
+   public long getVoteID()
+   {
+      return id;
+   }
 }
