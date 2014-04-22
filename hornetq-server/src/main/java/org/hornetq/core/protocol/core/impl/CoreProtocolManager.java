@@ -39,6 +39,7 @@ import org.hornetq.core.protocol.core.ServerSessionPacketHandler;
 import org.hornetq.core.protocol.core.impl.ChannelImpl.CHANNEL_ID;
 import org.hornetq.core.protocol.core.impl.wireformat.BackupRegistrationMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.BackupReplicationStartFailedMessage;
+import org.hornetq.core.protocol.core.impl.wireformat.BackupRequestMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.ClusterTopologyChangeMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.ClusterTopologyChangeMessage_V2;
 import org.hornetq.core.protocol.core.impl.wireformat.ClusterTopologyChangeMessage_V3;
@@ -53,6 +54,7 @@ import org.hornetq.core.remoting.impl.netty.NettyServerConnection;
 import org.hornetq.core.server.HornetQServer;
 import org.hornetq.core.server.HornetQServerLogger;
 import org.hornetq.core.server.cluster.ClusterConnection;
+import org.hornetq.core.server.cluster.ha.HAPolicy;
 import org.hornetq.spi.core.protocol.ConnectionEntry;
 import org.hornetq.spi.core.protocol.ProtocolManager;
 import org.hornetq.spi.core.protocol.RemotingConnection;
@@ -398,6 +400,30 @@ class CoreProtocolManager implements ProtocolManager
             else
             {
                channel0.send(new BackupReplicationStartFailedMessage(BackupReplicationStartFailedMessage.BackupRegistrationProblem.AUTHENTICATION));
+            }
+         }
+         else if (packet.getType() == PacketImpl.BACKUP_REQUEST)
+         {
+            BackupRequestMessage backupRequestMessage = (BackupRequestMessage) packet;
+            try
+            {
+               if (backupRequestMessage.getBackupType() == HAPolicy.BACKUP_TYPE.SHARED_STORE)
+               {
+                  server.getHAManager().activateSharedStoreBackup(backupRequestMessage.getBackupSize(),
+                                                                  backupRequestMessage.getJournalDirectory(),
+                                                                  backupRequestMessage.getBindingsDirectory(),
+                                                                  backupRequestMessage.getLargeMessagesDirectory(),
+                                                                  backupRequestMessage.getPagingDirectory());
+               }
+               else
+               {
+                  server.getHAManager().activateReplicatedBackup(backupRequestMessage.getBackupSize(), backupRequestMessage.getNodeID());
+               }
+            }
+            catch (Exception e)
+            {
+               e.printStackTrace();
+               //todo
             }
          }
       }

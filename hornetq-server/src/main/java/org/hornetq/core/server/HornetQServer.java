@@ -35,6 +35,7 @@ import org.hornetq.core.replication.ReplicationManager;
 import org.hornetq.core.security.Role;
 import org.hornetq.core.server.cluster.ClusterConnection;
 import org.hornetq.core.server.cluster.ClusterManager;
+import org.hornetq.core.server.cluster.ha.HAManager;
 import org.hornetq.core.server.group.GroupingHandler;
 import org.hornetq.core.server.impl.ConnectorsService;
 import org.hornetq.core.server.management.ManagementService;
@@ -262,4 +263,5 @@ public interface HornetQServer extends HornetQComponent
    * */
    void removeProtocolManagerFactory(ProtocolManagerFactory factory);
 
+   HAManager getHAManager();
 }

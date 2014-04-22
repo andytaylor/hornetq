@@ -3126,6 +3126,12 @@ public class HornetQServerImpl implements HornetQServer
       protocolManagerFactories.remove(factory);
    }
 
+   @Override
+   public HAManager getHAManager()
+   {
+      return haManager;
+   }
+
    private int countNumberOfCopiedJournals()
    {
       //will use the main journal to check for how many backups have been kept

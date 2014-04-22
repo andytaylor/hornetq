@@ -12,8 +12,46 @@
  */
 package org.hornetq.core.server.cluster.ha;
 
-public class HAPolicy
+import java.io.Serializable;
+import java.util.EnumSet;
+import java.util.Set;
+
+import org.hornetq.core.config.BackupStrategy;
+
+public class HAPolicy implements Serializable
 {
+   public enum BACKUP_TYPE
+   {
+      SHARED_STORE((byte) 0),
+      REPLICATED((byte) 1);
+
+      private static final Set<BACKUP_TYPE> all = EnumSet.allOf(BACKUP_TYPE.class);
+      private final byte type;
+
+      BACKUP_TYPE(byte type)
+      {
+         this.type = type;
+      }
+
+      public byte getType()
+      {
+         return type;
+      }
+
+      public static BACKUP_TYPE toBackupType(byte b)
+      {
+         for (BACKUP_TYPE backupType : all)
+         {
+            if (b == backupType.getType())
+            {
+               return backupType;
+            }
+         }
+         return null;
+      }
+
+   }
+
    private static final boolean DEFAULT_REQUEST_BACKUP = false;
 
    private static final int DEFAULT_BACKUP_REQUEST_RETRIES = -1;
@@ -26,6 +64,12 @@ public class HAPolicy
 
    private static final int DEFAULT_BACKUP_PORT_OFFSET = 100;
 
+   private BACKUP_TYPE backupType = BACKUP_TYPE.REPLICATED;
+
+   private BackupStrategy backupStrategy = BackupStrategy.FULL;
+
+   private String scaledownConnector;
+
    private boolean requestBackup = DEFAULT_REQUEST_BACKUP;
 
    private int backupRequestRetries = DEFAULT_BACKUP_REQUEST_RETRIES;
@@ -37,6 +81,36 @@ public class HAPolicy
    private int maxBackups = DEFAULT_MAX_BACKUPS;
 
    private int backupPortOffset = DEFAULT_BACKUP_PORT_OFFSET;
+
+   public BACKUP_TYPE getBackupType()
+   {
+      return backupType;
+   }
+
+   public void setBackupType(BACKUP_TYPE backupType)
+   {
+      this.backupType = backupType;
+   }
+
+   public BackupStrategy getBackupStrategy()
+   {
+      return backupStrategy;
+   }
+
+   public void setBackupStrategy(BackupStrategy backupStrategy)
+   {
+      this.backupStrategy = backupStrategy;
+   }
+
+   public String getScaledownConnector()
+   {
+      return scaledownConnector;
+   }
+
+   public void setScaledownConnector(String scaledownConnector)
+   {
+      this.scaledownConnector = scaledownConnector;
+   }
 
    public boolean isRequestBackup()
    {

@@ -13,6 +13,7 @@
 
 package org.hornetq.core.protocol;
 
+import static org.hornetq.core.protocol.core.impl.PacketImpl.BACKUP_REQUEST;
 import static org.hornetq.core.protocol.core.impl.PacketImpl.REPLICATION_APPEND;
 import static org.hornetq.core.protocol.core.impl.PacketImpl.REPLICATION_APPEND_TX;
 import static org.hornetq.core.protocol.core.impl.PacketImpl.REPLICATION_COMMIT_ROLLBACK;
@@ -34,6 +35,7 @@ import org.hornetq.core.protocol.core.impl.PacketDecoder;
 import org.hornetq.core.protocol.core.impl.PacketImpl;
 import org.hornetq.core.protocol.core.impl.wireformat.BackupRegistrationMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.BackupReplicationStartFailedMessage;
+import org.hornetq.core.protocol.core.impl.wireformat.BackupRequestMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.ReplicationLiveIsStoppingMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.ReplicationAddMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.ReplicationAddTXMessage;
@@ -165,6 +167,11 @@ public class ServerPacketDecoder extends PacketDecoder
          case PacketImpl.REPLICATION_SCHEDULED_FAILOVER:
          {
             packet = new ReplicationLiveIsStoppingMessage();
+            break;
+         }
+         case BACKUP_REQUEST:
+         {
+            packet = new BackupRequestMessage();
             break;
          }
          default:
