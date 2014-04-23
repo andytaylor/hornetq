@@ -13,7 +13,9 @@
 package org.hornetq.core.server.cluster.ha;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 
 import org.hornetq.core.config.BackupStrategy;
@@ -81,6 +83,8 @@ public class HAPolicy implements Serializable
    private int maxBackups = DEFAULT_MAX_BACKUPS;
 
    private int backupPortOffset = DEFAULT_BACKUP_PORT_OFFSET;
+
+   private List<String> remoteConnectors = new ArrayList<>();
 
    public BACKUP_TYPE getBackupType()
    {
@@ -170,5 +174,15 @@ public class HAPolicy implements Serializable
    public void setBackupPortOffset(int backupPortOffset)
    {
       this.backupPortOffset = backupPortOffset;
+   }
+
+   public List<String> getRemoteConnectors()
+   {
+      return remoteConnectors;
+   }
+
+   public void setRemoteConnectors(List<String> remoteConnectors)
+   {
+      this.remoteConnectors = remoteConnectors;
    }
 }

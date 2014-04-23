@@ -300,6 +300,8 @@ public class HornetQServerImpl implements HornetQServer
 
    private Activation activation;
 
+   private Map<String, Object> activationParams = new HashMap<>();
+
    private final ShutdownOnCriticalErrorListener shutdownOnCriticalIO = new ShutdownOnCriticalErrorListener();
 
    private final Object failbackCheckerGuard = new Object();
@@ -543,6 +545,10 @@ public class HornetQServerImpl implements HornetQServer
       stop(configuration.isFailoverOnServerShutdown());
    }
 
+   public void addActivationParam(String key, Object val)
+   {
+      activationParams.put(key, val);
+   }
    @Override
    public boolean isAddressBound(String address) throws Exception
    {
@@ -2553,9 +2559,18 @@ public class HornetQServerImpl implements HornetQServer
             }
 
             //use a Node Locator to connect to the cluster
-            LiveNodeLocator nodeLocator = configuration.getBackupGroupName() == null ?
-               new AnyLiveNodeLocatorForReplication(backupQuorum, HornetQServerImpl.this) :
-               new NamedLiveNodeLocatorForReplication(configuration.getBackupGroupName(), backupQuorum);
+            LiveNodeLocator nodeLocator;
+            if (activationParams.get("REPLICATION_ENDPOINT") != null)
+            {
+               TopologyMember member = (TopologyMember) activationParams.get("REPLICATION_ENDPOINT");
+               nodeLocator = new NamedNodeIdNodeLocator(member.getNodeId(), new Pair<>(member.getLive(), member.getBackup()));
+            }
+            else
+            {
+               nodeLocator = configuration.getBackupGroupName() == null ?
+                     new AnyLiveNodeLocatorForReplication(backupQuorum, HornetQServerImpl.this) :
+                     new NamedLiveNodeLocatorForReplication(configuration.getBackupGroupName(), backupQuorum);
+            }
             clusterManager.getQuorumManager().addClusterTopologyListener(nodeLocator);
             //todo do we actually need to wait?
             clusterManager.getQuorumManager().awaitConnectionToCluster();

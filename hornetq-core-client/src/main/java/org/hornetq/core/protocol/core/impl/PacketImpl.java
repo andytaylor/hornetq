@@ -224,7 +224,7 @@ public class PacketImpl implements Packet
 
    public static final byte BACKUP_REQUEST = 125;
 
-   public static final byte BACKUP_REQUEST_RESPONSE = 125;
+   public static final byte BACKUP_REQUEST_RESPONSE = 126;
 
    // Static --------------------------------------------------------
 

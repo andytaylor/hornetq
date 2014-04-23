@@ -40,6 +40,7 @@ import org.hornetq.core.protocol.core.impl.ChannelImpl.CHANNEL_ID;
 import org.hornetq.core.protocol.core.impl.wireformat.BackupRegistrationMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.BackupReplicationStartFailedMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.BackupRequestMessage;
+import org.hornetq.core.protocol.core.impl.wireformat.BackupResponseMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.ClusterTopologyChangeMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.ClusterTopologyChangeMessage_V2;
 import org.hornetq.core.protocol.core.impl.wireformat.ClusterTopologyChangeMessage_V3;
@@ -417,7 +418,8 @@ class CoreProtocolManager implements ProtocolManager
                }
                else
                {
-                  server.getHAManager().activateReplicatedBackup(backupRequestMessage.getBackupSize(), backupRequestMessage.getNodeID());
+                  boolean started = server.getHAManager().activateReplicatedBackup(backupRequestMessage.getBackupSize(), backupRequestMessage.getNodeID());
+                  channel0.send(new BackupResponseMessage(started));
                }
             }
             catch (Exception e)

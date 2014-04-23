@@ -497,6 +497,8 @@ public final class QuorumManager implements ClusterTopologyListener, HornetQComp
          {
             Vote vote;
             sessionFactory = locator.createSessionFactory(serverTC);
+            if (!started)
+               return;
             if (sessionFactory != null)
             {
                session = sessionFactory.createSession();
@@ -505,7 +507,6 @@ public final class QuorumManager implements ClusterTopologyListener, HornetQComp
                   vote = quorumVote.connected();
                   if (vote.isRequestServerVote())
                   {
-                     requestServerVote = true;
                      ClientRequestor requestor = new ClientRequestor(session, "jms.queue.hornetq.management");
                      ClientMessage message = session.createMessage(false);
                      ManagementHelper.putOperationInvocation(message, ResourceNames.CORE_SERVER, "quorumVote", quorumVote.getName().toString(), vote.getVoteMap());
@@ -538,7 +539,6 @@ public final class QuorumManager implements ClusterTopologyListener, HornetQComp
          catch (Exception e)
          {
             e.printStackTrace();
-            // no-op
          }
          finally
          {

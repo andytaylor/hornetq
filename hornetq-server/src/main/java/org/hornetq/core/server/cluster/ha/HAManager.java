@@ -20,16 +20,19 @@ import org.hornetq.api.core.client.ClusterTopologyListener;
 import org.hornetq.api.core.client.HornetQClient;
 import org.hornetq.api.core.client.ServerLocator;
 import org.hornetq.api.core.client.TopologyMember;
+import org.hornetq.core.client.impl.ServerLocatorImpl;
 import org.hornetq.core.client.impl.TopologyMemberImpl;
 import org.hornetq.core.config.BackupStrategy;
 import org.hornetq.core.config.ClusterConnectionConfiguration;
 import org.hornetq.core.config.Configuration;
+import org.hornetq.core.protocol.ServerPacketDecoder;
 import org.hornetq.core.protocol.core.Channel;
 import org.hornetq.core.protocol.core.CoreRemotingConnection;
 import org.hornetq.core.protocol.core.Packet;
 import org.hornetq.core.protocol.core.impl.ChannelImpl;
 import org.hornetq.core.protocol.core.impl.PacketImpl;
 import org.hornetq.core.protocol.core.impl.wireformat.BackupRequestMessage;
+import org.hornetq.core.protocol.core.impl.wireformat.BackupResponseMessage;
 import org.hornetq.core.server.HornetQServer;
 import org.hornetq.core.server.cluster.ClusterConnection;
 import org.hornetq.core.server.cluster.qourum.QuorumVote;
@@ -116,27 +119,34 @@ public class HAManager implements ClusterTopologyListener
       backupServers.clear();
    }
 
-   private void requestBackup(Pair<TransportConfiguration, TransportConfiguration> connectorPair, int backupSize) throws Exception
+   private boolean requestBackup(Pair<TransportConfiguration, TransportConfiguration> connectorPair, int backupSize) throws Exception
    {
-      ServerLocator locator = HornetQClient.createServerLocatorWithoutHA(connectorPair.getA());
-      ClientSessionFactory sessionFactory = locator.createSessionFactory();
-      CoreRemotingConnection connection = (CoreRemotingConnection) sessionFactory.getConnection();
-      Channel channel = connection.getChannel(ChannelImpl.CHANNEL_ID.PING.id, -1);
-      BackupRequestMessage backupRequestMessage;
-      if (haPolicy.getBackupType() == HAPolicy.BACKUP_TYPE.SHARED_STORE)
+
+      try
+      (
+         ServerLocatorImpl locator = (ServerLocatorImpl) HornetQClient.createServerLocatorWithoutHA(connectorPair.getA())
+      )
       {
-         backupRequestMessage = new BackupRequestMessage(backupSize,
-                                                         server.getConfiguration().getJournalDirectory(),
-                                                         server.getConfiguration().getBindingsDirectory(),
-                                                         server.getConfiguration().getLargeMessagesDirectory(),
-                                                         server.getConfiguration().getPagingDirectory());
+         locator.setPacketDecoder(ServerPacketDecoder.INSTANCE);
+         ClientSessionFactory sessionFactory = locator.createSessionFactory();
+         CoreRemotingConnection connection = (CoreRemotingConnection) sessionFactory.getConnection();
+         Channel channel = connection.getChannel(ChannelImpl.CHANNEL_ID.PING.id, -1);
+         BackupRequestMessage backupRequestMessage;
+         if (haPolicy.getBackupType() == HAPolicy.BACKUP_TYPE.SHARED_STORE)
+         {
+            backupRequestMessage = new BackupRequestMessage(backupSize,
+                                                            server.getConfiguration().getJournalDirectory(),
+                                                            server.getConfiguration().getBindingsDirectory(),
+                                                            server.getConfiguration().getLargeMessagesDirectory(),
+                                                            server.getConfiguration().getPagingDirectory());
+         }
+         else
+         {
+            backupRequestMessage = new BackupRequestMessage(backupSize, server.getNodeID());
+         }
+         BackupResponseMessage packet = (BackupResponseMessage) channel.sendBlocking(backupRequestMessage, PacketImpl.BACKUP_REQUEST_RESPONSE);
+         return packet.isBackupStarted();
       }
-      else
-      {
-         ClusterConnection defaultConnection = server.getClusterManager().getDefaultConnection(null);
-         backupRequestMessage = new BackupRequestMessage(backupSize, server.getNodeID());
-      }
-      Packet packet = channel.sendBlocking(backupRequestMessage, PacketImpl.BACKUP_REQUEST_RESPONSE);
    }
 
    @Override
@@ -156,24 +166,31 @@ public class HAManager implements ClusterTopologyListener
 
    }
 
-   public synchronized void activateReplicatedBackup(int backupSize, SimpleString nodeID) throws Exception
+   public synchronized boolean activateReplicatedBackup(int backupSize, SimpleString nodeID) throws Exception
    {
-      TopologyMemberImpl member = server.getClusterManager().getDefaultConnection(null).getTopology().getMember(nodeID.toString());
+      TopologyMember member = server.getClusterManager().getDefaultConnection(null).getTopology().getMember(nodeID.toString());
       Configuration configuration = server.getConfiguration().copy();
       int portOffset = haPolicy.getBackupPortOffset() * (backupServers.size() + 1);
       String name = "colocated_backup_" + backupServers.size() + 1;
-      updateConfiguration(configuration, haPolicy.getBackupStrategy(), name, portOffset, haPolicy.getScaledownConnector());
+      updateConfiguration(configuration, haPolicy.getBackupStrategy(), name, portOffset, haPolicy.getScaledownConnector(), haPolicy.getRemoteConnectors());
       configuration.setSharedStore(false);
       configuration.setBackup(true);
       HornetQServer backup = new HornetQServerImpl(configuration, null, securityManager, server);
+      backup.addActivationParam("REPLICATION_ENDPOINT", member);
       backupServers.put(configuration.getName(), backup);
       backup.start();
+      return true;
    }
 
-   public static void updateConfiguration(Configuration backupConfiguration, BackupStrategy backupStrategy, String name, int portOffset, String scaleDownConnector)
+   public static void updateConfiguration(Configuration backupConfiguration, BackupStrategy backupStrategy, String name, int portOffset, String scaleDownConnector, List<String> remoteConnectors)
    {
       backupConfiguration.setBackupStrategy(backupStrategy);
       backupConfiguration.setName(name);
+
+      backupConfiguration.setJournalDirectory(backupConfiguration.getJournalDirectory() + name);
+      backupConfiguration.setPagingDirectory(backupConfiguration.getPagingDirectory() + name);
+      backupConfiguration.setLargeMessagesDirectory(backupConfiguration.getLargeMessagesDirectory() + name);
+      backupConfiguration.setBindingsDirectory(backupConfiguration.getBindingsDirectory() + name);
       //we only do this if we are a full server, if recover then our connectors will be the same as the parent
       if (backupConfiguration.getBackupStrategy() == BackupStrategy.FULL)
       {
@@ -185,7 +202,10 @@ public class HAManager implements ClusterTopologyListener
          Map<String, TransportConfiguration> connectorConfigurations = backupConfiguration.getConnectorConfigurations();
          for (Map.Entry<String, TransportConfiguration> entry : connectorConfigurations.entrySet())
          {
-            updatebackupParams(name, portOffset, entry.getValue().getParams());
+            if (!remoteConnectors.contains(entry.getValue().getName()))
+            {
+               updatebackupParams(name, portOffset, entry.getValue().getParams());
+            }
          }
       }
       else
@@ -219,6 +239,11 @@ public class HAManager implements ClusterTopologyListener
             params.put("server-id", serverId.toString() + "(" + name + ")");
          }
       }
+   }
+
+   public Map<String, HornetQServer> getBackupServers()
+   {
+      return backupServers;
    }
 
    private final class RequestBackupQuorumVoteHandler implements QuorumVoteHandler
@@ -286,7 +311,19 @@ public class HAManager implements ClusterTopologyListener
             TopologyMemberImpl member = server.getClusterManager().getDefaultConnection(null).getTopology().getMember(decision.getA());
             try
             {
-               requestBackup(member.getConnector(), decision.getB().intValue());
+               boolean backupStarted = requestBackup(member.getConnector(), decision.getB().intValue());
+               if (!backupStarted)
+               {
+                  nodes.clear();
+                  server.getScheduledPool().schedule(new Runnable()
+                  {
+                     @Override
+                     public void run()
+                     {
+                        server.getClusterManager().getQuorumManager().vote(RequestBackupQuorumVote.this);
+                     }
+                  }, haPolicy.getBackupRequestRetryInterval(), TimeUnit.MILLISECONDS);
+               }
             }
             catch (Exception e)
             {
