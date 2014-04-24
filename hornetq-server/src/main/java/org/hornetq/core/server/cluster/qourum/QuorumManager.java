@@ -49,8 +49,6 @@ import org.hornetq.core.server.HornetQComponent;
 import org.hornetq.core.server.HornetQMessageBundle;
 import org.hornetq.core.server.HornetQServer;
 import org.hornetq.core.server.HornetQServerLogger;
-import org.hornetq.core.server.cluster.ha.HAManager;
-import org.hornetq.utils.TypedProperties;
 
 /**
  * A QourumManager can be used to register a {@link org.hornetq.core.server.cluster.qourum.Quorum} to receive notifications
@@ -339,19 +337,28 @@ public final class QuorumManager implements ClusterTopologyListener, HornetQComp
       {
          if (!started)
             return;
+         //send a vote to each node
          for (TopologyMemberImpl tm : serverLocator.getTopology().getMembers())
          {
-            Pair<TransportConfiguration, TransportConfiguration> pair = tm.getConnector();
+            //but not ourselves
+            if (!tm.getNodeId().equals(server.getNodeID().toString()))
+            {
+               Pair<TransportConfiguration, TransportConfiguration> pair = tm.getConnector();
 
-            final TransportConfiguration serverTC = pair.getA();
+               final TransportConfiguration serverTC = pair.getA();
 
-            final ServerLocatorImpl locator = (ServerLocatorImpl) HornetQClient.createServerLocatorWithoutHA(serverTC);
-            VoteRunnable voteRunnable = new VoteRunnable(locator, serverTC, quorumVote);
-            runnables.add(voteRunnable);
+
+               final ServerLocatorImpl locator = (ServerLocatorImpl) HornetQClient.createServerLocatorWithoutHA(serverTC);
+
+               VoteRunnable voteRunnable = new VoteRunnable(locator, serverTC, quorumVote);
+
+               runnables.add(voteRunnable);
+            }
          }
          if (runnables.size() > 0)
          {
             voteRunnables.put(quorumVote, new VoteRunnableHolder(quorumVote, runnables, runnables.size()));
+
             for (VoteRunnable runnable : runnables)
             {
                executor.submit(runnable);
@@ -359,14 +366,20 @@ public final class QuorumManager implements ClusterTopologyListener, HornetQComp
          }
          else
          {
-            quorumVote.allVotesCast();
+            quorumVote.allVotesCast(serverLocator.getTopology());
          }
       }
    }
 
+   /**
+    * handle a vore received on the quorum
+    *
+    * @param handler the name of the handler to use for the vote
+    * @param voteParams the vote params
+    * @return
+    */
    public Map vote(String handler, Map<String, Object> voteParams)
    {
-      System.out.println("org.hornetq.core.server.cluster.qourum.QuorumManager.vote " + server.getIdentity());
       QuorumVoteHandler quorumVoteHandler = handlers.get(new SimpleString(handler));
       Vote vote = quorumVoteHandler.vote(voteParams);
       return vote.getVoteMap();
@@ -388,6 +401,15 @@ public final class QuorumManager implements ClusterTopologyListener, HornetQComp
             runnable.close();
          }
       }
+   }
+
+   /**
+    * called to register vote handlers on the quorum
+    * @param quorumVoteHandler the vote handler
+    */
+   public void registerQuorumHandler(QuorumVoteHandler quorumVoteHandler)
+   {
+      handlers.put(quorumVoteHandler.getQuorumName(), quorumVoteHandler);
    }
 
    @Override
@@ -442,11 +464,6 @@ public final class QuorumManager implements ClusterTopologyListener, HornetQComp
       return tcConfigs;
    }
 
-   public void registerQuorumHandler(QuorumVoteHandler quorumVoteHandler)
-   {
-      handlers.put(quorumVoteHandler.getQuorumName(), quorumVoteHandler);
-   }
-
    private final class VoteRunnableHolder
    {
       private QuorumVote quorumVote;
@@ -466,7 +483,7 @@ public final class QuorumManager implements ClusterTopologyListener, HornetQComp
          size--;
          if (size <= 0)
          {
-            quorumVote.allVotesCast();
+            quorumVote.allVotesCast(serverLocator.getTopology());
          }
       }
    }
@@ -492,7 +509,6 @@ public final class QuorumManager implements ClusterTopologyListener, HornetQComp
       {
          final ClientSessionFactory sessionFactory;
          ClientSession session;
-         boolean requestServerVote = false;
          try
          {
             Vote vote;
@@ -501,16 +517,20 @@ public final class QuorumManager implements ClusterTopologyListener, HornetQComp
                return;
             if (sessionFactory != null)
             {
+               //try to connect to the node i want to send a vote to
                session = sessionFactory.createSession();
                if (session != null)
                {
+                  //if we are successful get the vote and check whether we need to send it to the target server,
+                  //just connecting may be enough
                   vote = quorumVote.connected();
                   if (vote.isRequestServerVote())
                   {
+                     //todo replace this with proper management calls not exposed to the client
                      ClientRequestor requestor = new ClientRequestor(session, "jms.queue.hornetq.management");
                      ClientMessage message = session.createMessage(false);
                      ManagementHelper.putOperationInvocation(message, ResourceNames.CORE_SERVER, "quorumVote", quorumVote.getName().toString(), vote.getVoteMap());
-                           message.putStringProperty(ManagementHelper.HDR_QUORUM_VOTE_PROPOSAL, quorumVote.getName());
+                     message.putStringProperty(ManagementHelper.HDR_QUORUM_VOTE_PROPOSAL, quorumVote.getName());
                      session.start();
                      ClientMessage reply = requestor.request(message);
                      Object result = ManagementHelper.getResult(reply);

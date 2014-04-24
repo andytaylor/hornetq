@@ -40,18 +40,10 @@ public class AutomaticColocatedQuorumVoteTest extends ServiceTestBase
    @Test
    public void testSimpleDistributionOfBackups() throws Exception
    {
-      TransportConfiguration liveConnector0 = getConnectorTransportConfiguration("liveConnector0", 0);
-      TransportConfiguration liveConnector1 = getConnectorTransportConfiguration("liveConnector1", 1);
-      TransportConfiguration remoteConnector0 = getConnectorTransportConfiguration("remoteConnector0", 1);
-      TransportConfiguration remoteConnector1 = getConnectorTransportConfiguration("remoteConnector1", 0);
-      TransportConfiguration liveAcceptor0 = getAcceptorTransportConfiguration(0);
-      TransportConfiguration liveAcceptor1 = getAcceptorTransportConfiguration(1);
-      Configuration liveConfiguration0 = getConfiguration("server0", liveConnector0, liveAcceptor0, remoteConnector0);
-      HornetQServer server0 = new HornetQServerImpl(liveConfiguration0);
-      server0.setIdentity("server0");
-      Configuration liveConfiguration1 = getConfiguration("server1", liveConnector1, liveAcceptor1, remoteConnector1);
-      HornetQServer server1 = new HornetQServerImpl(liveConfiguration1);
-      server1.setIdentity("server1");
+      HornetQServer server0 = createServer(0, 1);
+      HornetQServer server1 = createServer(1, 0);
+      TransportConfiguration liveConnector0 = getConnectorTransportConfiguration("liveConnector" + 0, 0);
+      TransportConfiguration liveConnector1 = getConnectorTransportConfiguration("liveConnector" + 1, 1);
 
       try
       (
@@ -85,6 +77,83 @@ public class AutomaticColocatedQuorumVoteTest extends ServiceTestBase
       }
    }
 
+   @Test
+   public void testSimpleDistributionOfBackupsMaxBackupsExceeded() throws Exception
+   {
+      HornetQServer server0 = createServer(0, 1);
+      HornetQServer server1 = createServer(1, 0);
+      HornetQServer server2 = createServer(2, 0);
+      HornetQServer server3 = createServer(3, 0);
+      TransportConfiguration liveConnector0 = getConnectorTransportConfiguration("liveConnector" + 0, 0);
+      TransportConfiguration liveConnector1 = getConnectorTransportConfiguration("liveConnector" + 1, 1);
+      TransportConfiguration liveConnector2 = getConnectorTransportConfiguration("liveConnector" + 2, 2);
+      TransportConfiguration liveConnector3 = getConnectorTransportConfiguration("liveConnector" + 3, 3);
+
+
+      try
+      (
+         ServerLocator serverLocator = HornetQClient.createServerLocatorWithoutHA(liveConnector0)
+      )
+      {
+         server0.start();
+         server1.start();
+         ClientSessionFactory sessionFactory0 = serverLocator.createSessionFactory(liveConnector0);
+         waitForRemoteBackup(sessionFactory0, 10);
+         ClientSessionFactory sessionFactory1 = serverLocator.createSessionFactory(liveConnector1);
+         waitForRemoteBackup(sessionFactory1, 10);
+         Topology topology = serverLocator.getTopology();
+         Collection<TopologyMemberImpl> members = topology.getMembers();
+         assertEquals(members.size(), 2);
+         Map<String,HornetQServer> backupServers0 = server0.getHAManager().getBackupServers();
+         assertEquals(backupServers0.size(), 1);
+         Map<String,HornetQServer> backupServers1 = server1.getHAManager().getBackupServers();
+         assertEquals(backupServers1.size(), 1);
+         HornetQServer backupServer0 = backupServers0.values().iterator().next();
+         HornetQServer backupServer1 = backupServers1.values().iterator().next();
+         waitForRemoteBackupSynchronization(backupServer0);
+         waitForRemoteBackupSynchronization(backupServer1);
+         assertEquals(server0.getNodeID(), backupServer1.getNodeID());
+         assertEquals(server1.getNodeID(), backupServer0.getNodeID());
+         server2.start();
+         //just give server2 time to try both server 0 and 1
+         ClientSessionFactory sessionFactory2 = serverLocator.createSessionFactory(liveConnector2);
+         server3.start();
+         ClientSessionFactory sessionFactory3 = serverLocator.createSessionFactory(liveConnector3);
+         waitForRemoteBackup(sessionFactory2, 10);
+         waitForRemoteBackup(sessionFactory3, 10);
+         assertEquals(members.size(), 2);
+         Map<String,HornetQServer> backupServers2 = server2.getHAManager().getBackupServers();
+         assertEquals(backupServers2.size(), 1);
+         Map<String,HornetQServer> backupServers3 = server3.getHAManager().getBackupServers();
+         assertEquals(backupServers3.size(), 1);
+         HornetQServer backupServer2 = backupServers2.values().iterator().next();
+         HornetQServer backupServer3 = backupServers3.values().iterator().next();
+         waitForRemoteBackupSynchronization(backupServer2);
+         waitForRemoteBackupSynchronization(backupServer3);
+         assertEquals(server0.getNodeID(), backupServer1.getNodeID());
+         assertEquals(server1.getNodeID(), backupServer0.getNodeID());
+         assertEquals(server2.getNodeID(), backupServer3.getNodeID());
+         assertEquals(server3.getNodeID(), backupServer2.getNodeID());
+      }
+      finally
+      {
+         server0.stop();
+         server1.stop();
+         server2.stop();
+         server3.stop();
+      }
+   }
+
+   private HornetQServer createServer(int node, int remoteNode) throws Exception
+   {
+      TransportConfiguration liveConnector = getConnectorTransportConfiguration("liveConnector" + node, node);
+      TransportConfiguration remoteConnector = getConnectorTransportConfiguration("remoteConnector" + node, remoteNode);
+      TransportConfiguration liveAcceptor = getAcceptorTransportConfiguration(node);
+      Configuration liveConfiguration = getConfiguration("server" + node, liveConnector, liveAcceptor, remoteConnector);
+      HornetQServer server = new HornetQServerImpl(liveConfiguration);
+      server.setIdentity("server" + node);
+      return server;
+   }
    private Configuration getConfiguration(String identity, TransportConfiguration liveConnector, TransportConfiguration liveAcceptor, TransportConfiguration... otherLiveNodes) throws Exception
    {
       Configuration configuration = createDefaultConfig();

@@ -15,11 +15,12 @@ package org.hornetq.core.server.cluster.qourum;
 import java.util.Map;
 
 import org.hornetq.api.core.SimpleString;
+import org.hornetq.core.client.impl.Topology;
 
 /**
  * the vote itself. the vote can be decided by the enquirer or sent out to each node in the quorum.
  */
-public abstract class QuorumVote<T, T2>
+public abstract class QuorumVote<V extends Vote, T>
 {
    private long id;
    private SimpleString name;
@@ -36,7 +37,7 @@ public abstract class QuorumVote<T, T2>
     *
     * @return the vote to use
     */
-   abstract public Vote connected();
+   public abstract Vote connected();
 
    /**
     * called by the {@link org.hornetq.core.server.cluster.qourum.QuorumManager} fails to connect to a node in the quorum.
@@ -44,7 +45,7 @@ public abstract class QuorumVote<T, T2>
     * cannot cannot be asked.
     * @return the vote to use
     */
-   abstract public Vote notConnected();
+   public abstract Vote notConnected();
 
    /**
     * called by the {@link org.hornetq.core.server.cluster.qourum.QuorumManager} when a vote can be made, either from the
@@ -52,29 +53,55 @@ public abstract class QuorumVote<T, T2>
     *
     * @param vote the vote to make.
     */
-   abstract public void vote(Vote<T2> vote);
+   public abstract void vote(V vote);
 
    /**
     * get the decion of the vote
     *
     * @return the voting decision
     */
-   abstract public T getDecision();
+   public abstract T getDecision();
 
-   abstract public void allVotesCast();
+   /**
+    * todo this will be replaced
+    * @param voteMap
+    * @return
+    */
+   public abstract Vote createVote(Map<String, Object> voteMap);
 
+   /**
+    * called by the {@link org.hornetq.core.server.cluster.qourum.QuorumManager} when all the votes have been cast and received.
+    *
+    * @param voteTopology the topology of where the votes were sent.
+    */
+   public abstract void allVotesCast(Topology voteTopology);
+
+   /**
+    * the name of this quorum vote, used for identifying the correct {@link org.hornetq.core.server.cluster.qourum.QuorumVoteHandler}
+    *
+    * @return the name of the wuorum vote
+    */
    public SimpleString getName()
    {
       return name;
    }
 
-   abstract public Vote createVote(Map<String, Object> voteMap);
-
+   /**
+    * every vote has its own id so straggling votes don't get counted
+    *
+    * @param vote the vote
+    * @return
+    */
    public boolean isCurrentVote(Vote vote)
    {
       return id == vote.getVoteID();
    }
 
+   /**
+    * the id of the vote
+    *
+    * @return the vote id
+    */
    public long getVoteID()
    {
       return id;

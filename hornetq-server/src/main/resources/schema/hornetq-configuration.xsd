@@ -581,6 +581,13 @@
           </xsd:complexType>
         </xsd:element>
 
+      <xsd:element name="ha-policy" type="haPolicyType" maxOccurs="1" minOccurs="0">
+         <xsd:annotation hq:linkend="ha-policy">
+            <xsd:documentation>The HA policy of this server
+            </xsd:documentation>
+         </xsd:annotation>
+      </xsd:element>
+
         <xsd:element name="grouping-handler" type="groupingHandlerType" maxOccurs="1" minOccurs="0">
           <xsd:annotation hq:linkend="message-grouping">
             <xsd:documentation>Message Group configuration</xsd:documentation>
@@ -1356,6 +1363,26 @@
 
   </xsd:complexType>
 
+  <xsd:complexType name="haPolicyType">
+    <xsd:all>
+      <xsd:element name="backup-type" minOccurs="0" maxOccurs="1">
+         <xsd:annotation>
+            <xsd:documentation>what kind of backup should the server create</xsd:documentation>
+         </xsd:annotation>
+         <xsd:simpleType>
+            <xsd:restriction base="xsd:string">
+               <xsd:enumeration value="REPLICATED"/>
+               <xsd:enumeration value="SHARED_STORE"/>
+            </xsd:restriction>
+         </xsd:simpleType>
+      </xsd:element>
+      <xsd:element name="request-backup" type="xsd:boolean" minOccurs="0" maxOccurs="1">
+        <xsd:annotation>
+           <xsd:documentation>If true then the server will request a backup on another node</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
   <xsd:complexType name="groupingHandlerType">
     <xsd:all>
       <xsd:element name="type" maxOccurs="1" minOccurs="1">

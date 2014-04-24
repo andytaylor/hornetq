@@ -16,11 +16,10 @@ import org.hornetq.api.core.Pair;
 import org.hornetq.api.core.SimpleString;
 import org.hornetq.api.core.TransportConfiguration;
 import org.hornetq.api.core.client.ClientSessionFactory;
-import org.hornetq.api.core.client.ClusterTopologyListener;
 import org.hornetq.api.core.client.HornetQClient;
-import org.hornetq.api.core.client.ServerLocator;
 import org.hornetq.api.core.client.TopologyMember;
 import org.hornetq.core.client.impl.ServerLocatorImpl;
+import org.hornetq.core.client.impl.Topology;
 import org.hornetq.core.client.impl.TopologyMemberImpl;
 import org.hornetq.core.config.BackupStrategy;
 import org.hornetq.core.config.ClusterConnectionConfiguration;
@@ -28,13 +27,12 @@ import org.hornetq.core.config.Configuration;
 import org.hornetq.core.protocol.ServerPacketDecoder;
 import org.hornetq.core.protocol.core.Channel;
 import org.hornetq.core.protocol.core.CoreRemotingConnection;
-import org.hornetq.core.protocol.core.Packet;
 import org.hornetq.core.protocol.core.impl.ChannelImpl;
 import org.hornetq.core.protocol.core.impl.PacketImpl;
 import org.hornetq.core.protocol.core.impl.wireformat.BackupRequestMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.BackupResponseMessage;
+import org.hornetq.core.server.HornetQComponent;
 import org.hornetq.core.server.HornetQServer;
-import org.hornetq.core.server.cluster.ClusterConnection;
 import org.hornetq.core.server.cluster.qourum.QuorumVote;
 import org.hornetq.core.server.cluster.qourum.QuorumVoteHandler;
 import org.hornetq.core.server.cluster.qourum.Vote;
@@ -50,9 +48,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-public class HAManager implements ClusterTopologyListener
+/*
+* An HAManager takes care of any colocated backups in a VM. These are either pre configured backups or backups requested
+* by other lives. It also takes care of the quorum voting to request backups.
+* */
+public class HAManager implements HornetQComponent
 {
-   public static final SimpleString REQUEST_BACKUP_QUORUM_VOTE = new SimpleString("RequestBackupQuorumVote");
+   private static final SimpleString REQUEST_BACKUP_QUORUM_VOTE = new SimpleString("RequestBackupQuorumVote");
 
    private final HAPolicy haPolicy;
 
@@ -64,6 +66,8 @@ public class HAManager implements ClusterTopologyListener
 
    private Map<String, HornetQServer> backupServers = new HashMap<>();
 
+   private boolean started;
+
    public HAManager(HAPolicy haPolicy, HornetQSecurityManager securityManager, HornetQServerImpl hornetQServer, Set<Configuration> backupServerConfigurations)
    {
       this.haPolicy = haPolicy;
@@ -72,8 +76,13 @@ public class HAManager implements ClusterTopologyListener
       this.backupServerConfigurations = backupServerConfigurations;
    }
 
+   /**
+    * starts the HA manager, any pre configured backups are started and if a backup is needed a quorum vote in initiated
+    */
    public void start()
    {
+      if (started)
+         return;
       server.getClusterManager().getQuorumManager().registerQuorumHandler(new RequestBackupQuorumVoteHandler());
       if (backupServerConfigurations != null)
       {
@@ -83,7 +92,7 @@ public class HAManager implements ClusterTopologyListener
             backupServers.put(configuration.getName(), backup);
          }
       }
-
+      //start the backups
       for (HornetQServer hornetQServer : backupServers.values())
       {
          try
@@ -96,13 +105,18 @@ public class HAManager implements ClusterTopologyListener
          }
       }
 
+      //vote for a backup if required
       if (haPolicy.isRequestBackup())
       {
          server.getClusterManager().getQuorumManager().vote(new RequestBackupQuorumVote());
       }
+      started = true;
    }
 
-   public void stopAllBackups()
+   /**
+    * stop any backups
+    */
+   public void stop()
    {
       for (HornetQServer hornetQServer : backupServers.values())
       {
@@ -117,11 +131,78 @@ public class HAManager implements ClusterTopologyListener
          }
       }
       backupServers.clear();
+      started = false;
    }
 
-   private boolean requestBackup(Pair<TransportConfiguration, TransportConfiguration> connectorPair, int backupSize) throws Exception
+   @Override
+   public boolean isStarted()
+   {
+      return started;
+   }
+
+   public synchronized void activateSharedStoreBackup(int backupSize, String journalDirectory, String bindingsDirectory, String largeMessagesDirectory, String pagingDirectory)
    {
 
+   }
+
+   /**
+    * activate a backup server replicating from a specified node.
+    *
+    * @param backupSize the number of backups the requesting server thinks there are. if this is changed then we should
+    * decline and the requesting server can cast a re vote
+    * @param nodeID the id of the node to replicate from
+    * @return true if the server was created and started
+    * @throws Exception
+    */
+   public synchronized boolean activateReplicatedBackup(int backupSize, SimpleString nodeID) throws Exception
+   {
+      if (backupServers.size() >= haPolicy.getMaxBackups() || backupSize != backupServers.size())
+      {
+         return false;
+      }
+      Configuration configuration = server.getConfiguration().copy();
+      HornetQServer backup = new HornetQServerImpl(configuration, null, securityManager, server);
+      try
+      {
+         TopologyMember member = server.getClusterManager().getDefaultConnection(null).getTopology().getMember(nodeID.toString());
+         int portOffset = haPolicy.getBackupPortOffset() * (backupServers.size() + 1);
+         String name = "colocated_backup_" + backupServers.size() + 1;
+         updateConfiguration(configuration, haPolicy.getBackupStrategy(), name, portOffset, haPolicy.getScaledownConnector(), haPolicy.getRemoteConnectors());
+         configuration.setSharedStore(false);
+         configuration.setBackup(true);
+         backup.addActivationParam("REPLICATION_ENDPOINT", member);
+         backupServers.put(configuration.getName(), backup);
+         backup.start();
+      }
+      catch (Exception e)
+      {
+         backup.stop();
+         //todo log a warning
+         return false;
+      }
+      return true;
+   }
+
+   /**
+    * return the current backup servers
+    *
+    * @return the backups
+    */
+   public Map<String, HornetQServer> getBackupServers()
+   {
+      return backupServers;
+   }
+
+   /**
+    * send a request to a live server to start a backup for us
+    *
+    * @param connectorPair the connector for the node to request a backup from
+    * @param backupSize the current size of the requested nodes backups
+    * @return true if the request wa successful.
+    * @throws Exception
+    */
+   private boolean requestBackup(Pair<TransportConfiguration, TransportConfiguration> connectorPair, int backupSize) throws Exception
+   {
       try
       (
          ServerLocatorImpl locator = (ServerLocatorImpl) HornetQClient.createServerLocatorWithoutHA(connectorPair.getA())
@@ -149,40 +230,17 @@ public class HAManager implements ClusterTopologyListener
       }
    }
 
-   @Override
-   public void nodeUP(TopologyMember member, boolean last)
-   {
-      System.out.println("org.hornetq.core.server.cluster.ha.HAManager.nodeUP");
-   }
-
-   @Override
-   public void nodeDown(long eventUID, String nodeID)
-   {
-      System.out.println("org.hornetq.core.server.cluster.ha.HAManager.nodeDown");
-   }
-
-   public synchronized void activateSharedStoreBackup(int backupSize, String journalDirectory, String bindingsDirectory, String largeMessagesDirectory, String pagingDirectory)
-   {
-
-   }
-
-   public synchronized boolean activateReplicatedBackup(int backupSize, SimpleString nodeID) throws Exception
-   {
-      TopologyMember member = server.getClusterManager().getDefaultConnection(null).getTopology().getMember(nodeID.toString());
-      Configuration configuration = server.getConfiguration().copy();
-      int portOffset = haPolicy.getBackupPortOffset() * (backupServers.size() + 1);
-      String name = "colocated_backup_" + backupServers.size() + 1;
-      updateConfiguration(configuration, haPolicy.getBackupStrategy(), name, portOffset, haPolicy.getScaledownConnector(), haPolicy.getRemoteConnectors());
-      configuration.setSharedStore(false);
-      configuration.setBackup(true);
-      HornetQServer backup = new HornetQServerImpl(configuration, null, securityManager, server);
-      backup.addActivationParam("REPLICATION_ENDPOINT", member);
-      backupServers.put(configuration.getName(), backup);
-      backup.start();
-      return true;
-   }
-
-   public static void updateConfiguration(Configuration backupConfiguration, BackupStrategy backupStrategy, String name, int portOffset, String scaleDownConnector, List<String> remoteConnectors)
+   /**
+    * update the backups configuration
+    *
+    * @param backupConfiguration the configuration to update
+    * @param backupStrategy the strategy for the backup
+    * @param name the new name of the backup
+    * @param portOffset the offset for the acceptors and any connectors that need changing
+    * @param scaleDownConnector the name of the scale down connector if required
+    * @param remoteConnectors the connectors that don't need off setting, typically remote
+    */
+   private static void updateConfiguration(Configuration backupConfiguration, BackupStrategy backupStrategy, String name, int portOffset, String scaleDownConnector, List<String> remoteConnectors)
    {
       backupConfiguration.setBackupStrategy(backupStrategy);
       backupConfiguration.setName(name);
@@ -241,17 +299,15 @@ public class HAManager implements ClusterTopologyListener
       }
    }
 
-   public Map<String, HornetQServer> getBackupServers()
-   {
-      return backupServers;
-   }
-
+   /**
+    * A vote handler for incoming backup request votes
+    */
    private final class RequestBackupQuorumVoteHandler implements QuorumVoteHandler
    {
       @Override
       public Vote vote(Map<String, Object> voteParams)
       {
-         return new RequestBackupVote((Long) voteParams.get("ID"), backupServers.size(), server.getNodeID().toString());
+         return new RequestBackupVote((Long) voteParams.get("ID"), backupServers.size(), server.getNodeID().toString(), backupServers.size() < haPolicy.getMaxBackups());
       }
 
       @Override
@@ -261,8 +317,12 @@ public class HAManager implements ClusterTopologyListener
       }
    }
 
-   private final class RequestBackupQuorumVote extends QuorumVote<Pair<String, Long>, Pair<String, Long>>
+   /**
+    * a quorum vote for backup requests
+    */
+   private final class RequestBackupQuorumVote extends QuorumVote<RequestBackupVote, Pair<String, Long>>
    {
+      //the available nodes that we can request
       private final List<Pair<String, Long>> nodes = new ArrayList<>();
 
       public RequestBackupQuorumVote()
@@ -283,14 +343,19 @@ public class HAManager implements ClusterTopologyListener
       }
 
       @Override
-      public void vote(Vote<Pair<String, Long>> vote)
+      public void vote(RequestBackupVote vote)
       {
-         nodes.add(vote.getVote());
+         //if the returned vote is available add it to the nodes we can request
+         if (vote.backupAvailable)
+         {
+            nodes.add(vote.getVote());
+         }
       }
 
       @Override
       public Pair<String, Long> getDecision()
       {
+         //sort the nodes by how many backups they have and choose the first
          Collections.sort(nodes, new Comparator<Pair<String, Long>>()
          {
             @Override
@@ -303,12 +368,13 @@ public class HAManager implements ClusterTopologyListener
       }
 
       @Override
-      public void allVotesCast()
+      public void allVotesCast(Topology voteTopology)
       {
+         //if we have any nodes that we can request then send a request
          if (nodes.size() > 0)
          {
             Pair<String, Long> decision = getDecision();
-            TopologyMemberImpl member = server.getClusterManager().getDefaultConnection(null).getTopology().getMember(decision.getA());
+            TopologyMemberImpl member = voteTopology.getMember(decision.getA());
             try
             {
                boolean backupStarted = requestBackup(member.getConnector(), decision.getB().intValue());
@@ -320,7 +386,7 @@ public class HAManager implements ClusterTopologyListener
                      @Override
                      public void run()
                      {
-                        server.getClusterManager().getQuorumManager().vote(RequestBackupQuorumVote.this);
+                        server.getClusterManager().getQuorumManager().vote(new RequestBackupQuorumVote());
                      }
                   }, haPolicy.getBackupRequestRetryInterval(), TimeUnit.MILLISECONDS);
                }
@@ -361,8 +427,13 @@ public class HAManager implements ClusterTopologyListener
 
    class RequestBackupVote extends Vote<Pair<String, Long>>
    {
+      public static final String ID = "ID";
+      public static final String BACKUP_SIZE = "BACKUP_SIZE";
+      public static final String NODEID = "NODEID";
+      public static final String BACKUP_AVAILABLE = "BACKUP_AVAILABLE";
       private long backupsSize;
       private String nodeID;
+      private boolean backupAvailable;
 
       public RequestBackupVote(long id)
       {
@@ -370,18 +441,20 @@ public class HAManager implements ClusterTopologyListener
          backupsSize = -1;
       }
 
-      public RequestBackupVote(Long id, int backupsSize, String nodeID)
+      public RequestBackupVote(Long id, int backupsSize, String nodeID, boolean backupAvailable)
       {
          super(id);
          this.backupsSize = backupsSize;
          this.nodeID = nodeID;
+         this.backupAvailable = backupAvailable;
       }
 
       public RequestBackupVote(Map<String, Object> voteMap)
       {
-         super((Long) voteMap.get("ID"));
-         backupsSize = (Long) voteMap.get("BACKUP_SIZE");
-         nodeID = (String) voteMap.get("NODEID");
+         super((Long) voteMap.get(ID));
+         backupsSize = (Long) voteMap.get(BACKUP_SIZE);
+         nodeID = (String) voteMap.get(NODEID);
+         backupAvailable = (Boolean) voteMap.get(BACKUP_AVAILABLE);
       }
 
       @Override
@@ -400,11 +473,12 @@ public class HAManager implements ClusterTopologyListener
       public Map<String, Object> getVoteMap()
       {
          Map<String, Object> map = super.getVoteMap();
-         map.put("BACKUP_SIZE", backupsSize);
+         map.put(BACKUP_SIZE, backupsSize);
          if (nodeID != null)
          {
-            map.put("NODEID", nodeID);
+            map.put(NODEID, nodeID);
          }
+         map.put(BACKUP_AVAILABLE, backupAvailable);
          return map;
       }
    }

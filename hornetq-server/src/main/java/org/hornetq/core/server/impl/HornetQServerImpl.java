@@ -598,7 +598,7 @@ public class HornetQServerImpl implements HornetQServer
     */
    private void stop(boolean failoverOnServerShutdown, final boolean criticalIOError, boolean failingBack) throws Exception
    {
-      haManager.stopAllBackups();
+      haManager.stop();
       if (!failingBack)
       {
          synchronized (failbackCheckerGuard)

@@ -20,8 +20,15 @@ import java.util.Set;
 
 import org.hornetq.core.config.BackupStrategy;
 
+/**
+ * Every live server will have an HAPolicy that configures how the live server should react to requesting and receiving
+ * requests for backups and also other HA configuration.
+ */
 public class HAPolicy implements Serializable
 {
+   /**
+    * the type of backup to request
+    */
    public enum BACKUP_TYPE
    {
       SHARED_STORE((byte) 0),

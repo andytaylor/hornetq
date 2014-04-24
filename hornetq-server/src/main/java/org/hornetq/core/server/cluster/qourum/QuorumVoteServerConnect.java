@@ -14,6 +14,7 @@
 package org.hornetq.core.server.cluster.qourum;
 
 import org.hornetq.api.core.SimpleString;
+import org.hornetq.core.client.impl.Topology;
 import org.hornetq.core.persistence.StorageManager;
 
 import java.util.Map;
@@ -22,7 +23,7 @@ import java.util.concurrent.CountDownLatch;
 /**
  * A Qourum Vote for deciding if a replicated backup should become live.
  */
-public class QuorumVoteServerConnect extends QuorumVote<Boolean, Boolean>
+public class QuorumVoteServerConnect extends QuorumVote<BooleanVote, Boolean>
 {
    private static final SimpleString LIVE_FAILOVER_VOTE = new SimpleString("LIVE_FAILOVER)VOTE");
    private final CountDownLatch latch;
@@ -96,7 +97,7 @@ public class QuorumVoteServerConnect extends QuorumVote<Boolean, Boolean>
     * @param vote the vote to make.
     */
    @Override
-   public synchronized void vote(Vote<Boolean> vote)
+   public synchronized void vote(BooleanVote vote)
    {
       if (decision)
          return;
@@ -123,7 +124,7 @@ public class QuorumVoteServerConnect extends QuorumVote<Boolean, Boolean>
    }
 
    @Override
-   public void allVotesCast()
+   public void allVotesCast(Topology voteTopology)
    {
 
    }

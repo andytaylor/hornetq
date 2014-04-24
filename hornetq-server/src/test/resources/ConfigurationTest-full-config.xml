@@ -1,7 +1,7 @@
 <configuration
    xmlns="urn:hornetq"
    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-   xsi:schemaLocation="urn:hornetq ../../src/config/common/schema/hornetq-configuration.xsd">
+   xsi:schemaLocation="urn:hornetq ../../../../hornetq-server/src/main/resources/schema/hornetq-configuration.xsd">
       <name>SomeNameForUseOnTheApplicationServer</name>
       <scheduled-thread-pool-max-size>12345</scheduled-thread-pool-max-size>
       <thread-pool-max-size>54321</thread-pool-max-size>
@@ -204,6 +204,19 @@
              <discovery-group-ref discovery-group-name="dg1"/>
          </cluster-connection>
       </cluster-connections>
+
+   <ha-policy>
+      <backup-type>REPLICATED</backup-type>
+      <backup-strategy>SCALE_DOWN</backup-strategy>
+      <scaledown-connector>scaledownconnector</scaledown-connector>
+      <request-backup>true</request-backup>
+      <backup-request-retries>5</backup-request-retries>
+      <backup-request-retry-interval>500</backup-request-retry-interval>
+      <allow-backup-requests>true</allow-backup-requests>
+      <max-backups>22</max-backups>
+      <backup-port-offset>32</backup-port-offset>
+      <remote-connectors>this,that</remote-connectors>
+   </ha-policy>
 
     <security-settings>
       <security-setting match="a1">

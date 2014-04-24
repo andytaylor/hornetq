@@ -12,14 +12,10 @@
  */
 package org.hornetq.core.server.cluster.qourum;
 
-
-import org.hornetq.api.core.HornetQBuffer;
-import org.hornetq.api.core.SimpleString;
-
 import java.util.Map;
 
 /**
- * a simpel yes.no vote
+ * a simple yes.no vote
  */
 public final class BooleanVote extends Vote<Boolean>
 {
