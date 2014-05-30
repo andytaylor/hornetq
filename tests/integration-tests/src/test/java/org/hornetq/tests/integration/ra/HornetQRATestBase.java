@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.concurrent.CountDownLatch;
 
+import org.hornetq.api.core.HornetQInterruptedException;
 import org.hornetq.api.core.SimpleString;
 import org.hornetq.api.core.client.ServerLocator;
 import org.hornetq.core.settings.impl.AddressSettings;
@@ -62,7 +63,7 @@ public abstract class HornetQRATestBase extends JMSTestBase
    {
       super.setUp();
       locator = createInVMNonHALocator();
-      createQueue(MDBQUEUE);
+      createQueue(true, MDBQUEUE);
       createQueue(DLQ);
       setupDLQ(1);
    }
@@ -103,7 +104,7 @@ public abstract class HornetQRATestBase extends JMSTestBase
    }
 
 
-   class DummyMessageEndpointFactory implements MessageEndpointFactory
+   protected class DummyMessageEndpointFactory implements MessageEndpointFactory
    {
       private DummyMessageEndpoint endpoint;
 
@@ -130,7 +131,7 @@ public abstract class HornetQRATestBase extends JMSTestBase
       }
    }
 
-   class DummyMessageEndpoint implements MessageEndpoint, MessageListener
+   protected class DummyMessageEndpoint implements MessageEndpoint, MessageListener
    {
       public CountDownLatch latch;
 
@@ -139,6 +140,8 @@ public abstract class HornetQRATestBase extends JMSTestBase
       public boolean released = false;
 
       public XAResource xaResource;
+
+      volatile boolean inAfterDelivery = false;
 
       public DummyMessageEndpoint(CountDownLatch latch)
       {
@@ -180,7 +183,7 @@ public abstract class HornetQRATestBase extends JMSTestBase
       }
    }
 
-   class MyBootstrapContext implements BootstrapContext
+   public class MyBootstrapContext implements BootstrapContext
    {
       WorkManager workManager = new DummyWorkManager();
 
