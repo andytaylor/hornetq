@@ -106,6 +106,14 @@ public class JMSClusteredTestBase extends ServiceTestBase
       return (Topic) context1.lookup("/topic/" + name);
    }
 
+   protected Topic createDurableTopic(final String name) throws Exception
+   {
+      jmsServer2.createTopic(true, name, "/topic/" + name);
+      jmsServer1.createTopic(true, name, "/topic/" + name);
+
+      return (Topic) context1.lookup("/topic/" + name);
+   }
+
    @Override
    @Before
    public void setUp() throws Exception
@@ -191,7 +199,7 @@ public class JMSClusteredTestBase extends ServiceTestBase
       JMSConfigurationImpl jmsconfig = new JMSConfigurationImpl();
 
       mBeanServer1 = MBeanServerFactory.createMBeanServer();
-      server1 = HornetQServers.newHornetQServer(conf1, mBeanServer1, false);
+      server1 = HornetQServers.newHornetQServer(conf1, mBeanServer1, isPersisted());
       jmsServer1 = new JMSServerManagerImpl(server1, jmsconfig);
       context1 = new InVMNamingContext();
       jmsServer1.setContext(context1);
@@ -296,4 +304,8 @@ public class JMSClusteredTestBase extends ServiceTestBase
    }
 
 
+   public boolean isPersisted()
+   {
+      return false;
+   }
 }

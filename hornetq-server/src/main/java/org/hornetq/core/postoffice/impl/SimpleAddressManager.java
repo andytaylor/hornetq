@@ -150,7 +150,10 @@ public class SimpleAddressManager implements AddressManager
    protected void removeBindingInternal(final SimpleString address, final SimpleString bindableName)
    {
       Bindings bindings = mappings.get(address);
-
+      if (address.toString().contains("t1"))
+      {
+         System.out.println("SimpleAddressManager.removeBindingInternal");
+      }
       if (bindings != null)
       {
          removeMapping(bindableName, bindings);
@@ -166,6 +169,11 @@ public class SimpleAddressManager implements AddressManager
    {
       Binding theBinding = null;
 
+
+      if (bindableName.toString().contains("t1"))
+      {
+         System.out.println("SimpleAddressManager.removeBindingInternal");
+      }
       for (Binding binding : bindings.getBindings())
       {
          if (binding.getUniqueName().equals(bindableName))

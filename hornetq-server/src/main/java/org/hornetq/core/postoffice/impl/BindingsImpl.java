@@ -312,8 +312,11 @@ public final class BindingsImpl implements Bindings
                   // ConcurrentHashMap behaviour!
                   continue;
                }
-
                Binding theBinding = getNextBinding(message, routingName, bindings);
+               if (name.toString().contains("t1"))
+               {
+                  System.err.println("BindingsImpl.route to " + theBinding);
+               }
 
                if (theBinding != null)
                {
