@@ -12,6 +12,8 @@
  */
 package org.hornetq.tests.unit.core.postoffice.impl;
 
+import org.hornetq.core.server.impl.QueueImpl;
+import org.hornetq.core.server.impl.RefsOperation;
 import org.junit.Test;
 
 import java.util.Collections;
@@ -243,6 +245,12 @@ public class BindingsImplTest extends UnitTestCase
       public void setTimeout(int timeout)
       {
 
+      }
+
+      @Override
+      public RefsOperation createRefsOperation(QueueImpl queue)
+      {
+         return null;
       }
 
       public List<TransactionOperation> getAllOperations()

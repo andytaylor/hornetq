@@ -236,7 +236,7 @@ class StompProtocolManager implements ProtocolManager, NotificationListener
                                                       false,
                                                       false,
                                                       null,
-                                                      stompSession);
+                                                      stompSession, new org.hornetq.core.protocol.openwire.amq.AMQSession.AMQTransactionFactory());
          stompSession.setServerSession(session);
          sessions.put(connection.getID(), stompSession);
       }
@@ -261,7 +261,7 @@ class StompProtocolManager implements ProtocolManager, NotificationListener
                                                       false,
                                                       false,
                                                       null,
-                                                      stompSession);
+                                                      stompSession, new org.hornetq.core.protocol.openwire.amq.AMQSession.AMQTransactionFactory());
          stompSession.setServerSession(session);
          transactedSessions.put(txID, stompSession);
       }

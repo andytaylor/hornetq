@@ -35,6 +35,9 @@ import org.hornetq.api.core.HornetQException;
 import org.hornetq.core.journal.IOAsyncTask;
 import org.hornetq.core.persistence.StorageManager;
 import org.hornetq.core.server.HornetQServerLogger;
+import org.hornetq.core.server.Queue;
+import org.hornetq.core.server.impl.QueueImpl;
+import org.hornetq.core.server.impl.RefsOperation;
 import org.hornetq.core.transaction.Transaction;
 import org.hornetq.core.transaction.TransactionOperation;
 
@@ -137,6 +140,12 @@ public class TransactionImpl implements Transaction
    public void setTimeout(final int timeout)
    {
       this.timeoutSeconds = timeout;
+   }
+
+   @Override
+   public RefsOperation createRefsOperation(Queue queue)
+   {
+      return new RefsOperation(queue, storageManager);
    }
 
    public long getID()

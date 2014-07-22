@@ -35,15 +35,17 @@ import org.apache.activemq.command.TransactionInfo;
 import org.apache.activemq.command.XATransactionId;
 import org.apache.activemq.wireformat.WireFormat;
 import org.hornetq.api.core.SimpleString;
-import org.hornetq.core.protocol.openwire.OpenWireConnection;
-import org.hornetq.core.protocol.openwire.OpenWireProtocolManager;
-import org.hornetq.core.protocol.openwire.OpenWireUtil;
+import org.hornetq.core.persistence.StorageManager;
+import org.hornetq.core.protocol.openwire.*;
+import org.hornetq.core.protocol.openwire.AMQTransaction;
 import org.hornetq.core.server.HornetQServer;
 import org.hornetq.core.server.HornetQServerLogger;
 import org.hornetq.core.server.ServerMessage;
 import org.hornetq.core.server.ServerSession;
 import org.hornetq.core.server.impl.ServerMessageImpl;
 import org.hornetq.core.server.impl.ServerSessionImpl;
+import org.hornetq.core.transaction.Transaction;
+import org.hornetq.core.transaction.TransactionFactory;
 import org.hornetq.core.transaction.impl.XidImpl;
 import org.hornetq.spi.core.protocol.SessionCallback;
 import org.hornetq.spi.core.remoting.ReadyListener;
@@ -96,7 +98,7 @@ public class AMQSession implements SessionCallback
       {
          coreSession = server.createSession(name, username, password,
                minLargeMessageSize, connection, true, false, false, false,
-               null, this);
+               null, this, new AMQTransactionFactory());
 
          long sessionId = sessInfo.getSessionId().getValue();
          if (sessionId == -1)
@@ -447,6 +449,15 @@ public class AMQSession implements SessionCallback
    public void close() throws Exception
    {
       this.coreSession.close(false);
+   }
+
+   class AMQTransactionFactory implements TransactionFactory
+   {
+      @Override
+      public Transaction newTransaction(Xid xid, StorageManager storageManager, int timeoutSeconds)
+      {
+         return new AMQTransaction(xid, storageManager, timeoutSeconds);
+      }
    }
 
 }

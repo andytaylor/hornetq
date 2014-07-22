@@ -103,7 +103,7 @@ public class ProtonSession implements SessionCallback
                                                  false,
                                                  false,
                                                  null,
-                                                 this);
+                                                 this, new org.hornetq.core.protocol.openwire.amq.AMQSession.AMQTransactionFactory());
          }
          catch (Exception e)
          {

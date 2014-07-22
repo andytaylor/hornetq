@@ -41,6 +41,7 @@ import org.hornetq.core.server.management.ManagementService;
 import org.hornetq.core.settings.HierarchicalRepository;
 import org.hornetq.core.settings.impl.AddressSettings;
 import org.hornetq.core.transaction.ResourceManager;
+import org.hornetq.core.transaction.TransactionFactory;
 import org.hornetq.core.version.Version;
 import org.hornetq.spi.core.protocol.ProtocolManagerFactory;
 import org.hornetq.spi.core.protocol.RemotingConnection;
@@ -112,7 +113,8 @@ public interface HornetQServer extends HornetQComponent
                                boolean preAcknowledge,
                                boolean xa,
                                String defaultAddress,
-                               SessionCallback callback) throws Exception;
+                               SessionCallback callback,
+                               TransactionFactory amqTransactionFactory) throws Exception;
 
    void removeSession(String name) throws Exception;
 

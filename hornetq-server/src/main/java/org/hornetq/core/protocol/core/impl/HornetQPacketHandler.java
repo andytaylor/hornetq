@@ -180,7 +180,7 @@ public class HornetQPacketHandler implements ChannelHandler
                                                       request.getDefaultAddress(),
                                                       new CoreSessionCallback(request.getName(),
                                                                               protocolManager,
-                                                                              channel));
+                                                                              channel), new org.hornetq.core.protocol.openwire.amq.AMQSession.AMQTransactionFactory());
 
          ServerSessionPacketHandler handler = new ServerSessionPacketHandler(session,
                                                                              server.getStorageManager(),

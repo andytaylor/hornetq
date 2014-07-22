@@ -76,12 +76,12 @@ import org.hornetq.core.server.RoutingContext;
 import org.hornetq.core.server.ServerConsumer;
 import org.hornetq.core.server.ServerMessage;
 import org.hornetq.core.server.ServerSession;
-import org.hornetq.core.server.impl.QueueImpl.RefsOperation;
 import org.hornetq.core.server.management.ManagementService;
 import org.hornetq.core.server.management.Notification;
 import org.hornetq.core.transaction.ResourceManager;
 import org.hornetq.core.transaction.Transaction;
 import org.hornetq.core.transaction.Transaction.State;
+import org.hornetq.core.transaction.TransactionFactory;
 import org.hornetq.core.transaction.TransactionOperationAbstract;
 import org.hornetq.core.transaction.TransactionPropertyIndexes;
 import org.hornetq.core.transaction.impl.TransactionImpl;
@@ -182,6 +182,8 @@ public class ServerSessionImpl implements ServerSession, FailureListener
    // concurrently.
    private volatile boolean closed = false;
 
+   private final TransactionFactory transactionFactory;
+
    // Constructors ---------------------------------------------------------------------------------
 
    public ServerSessionImpl(final String name,
@@ -203,7 +205,8 @@ public class ServerSessionImpl implements ServerSession, FailureListener
                             final SimpleString managementAddress,
                             final SimpleString defaultAddress,
                             final SessionCallback callback,
-                            final OperationContext context) throws Exception
+                            final OperationContext context,
+                            TransactionFactory transactionFactory) throws Exception
    {
       this.username = username;
 
@@ -246,6 +249,16 @@ public class ServerSessionImpl implements ServerSession, FailureListener
 
       remotingConnection.addFailureListener(this);
       this.context = context;
+
+      if (transactionFactory == null)
+      {
+         this.transactionFactory = new DefaultTransactionFactory();
+      }
+      else
+      {
+         this.transactionFactory = transactionFactory;
+      }
+
       if (!xa)
       {
          tx = newTransaction();
@@ -800,22 +813,12 @@ public class ServerSessionImpl implements ServerSession, FailureListener
    }
 
    /**
-    * @return
-    */
-   private TransactionImpl newAMQTransaction()
-   {
-      TransactionImpl localTx = new TransactionImpl(storageManager, timeoutSeconds);
-      localTx.setFromAMQ();
-      return localTx;
-   }
-
-   /**
     * @param xid
     * @return
     */
-   private TransactionImpl newTransaction(final Xid xid)
+   private Transaction newTransaction(final Xid xid)
    {
-      return new TransactionImpl(xid, storageManager, timeoutSeconds);
+      return transactionFactory.newTransaction(xid, storageManager, timeoutSeconds);
    }
 
    public synchronized void xaCommit(final Xid xid, final boolean onePhase) throws Exception
@@ -1779,7 +1782,7 @@ public class ServerSessionImpl implements ServerSession, FailureListener
    {
       if (this.tx != null)
       {
-         QueueImpl.RefsOperation oper = (QueueImpl.RefsOperation) tx.getProperty(TransactionPropertyIndexes.REFS_OPERATION);
+         RefsOperation oper = (RefsOperation) tx.getProperty(TransactionPropertyIndexes.REFS_OPERATION);
 
          if (oper == null)
          {
@@ -1831,7 +1834,7 @@ public class ServerSessionImpl implements ServerSession, FailureListener
          this.tx = null;
       }
 
-      this.tx = newAMQTransaction();
+      this.tx = newTransaction();
    }
 
    //amq specific behavior
@@ -1841,7 +1844,7 @@ public class ServerSessionImpl implements ServerSession, FailureListener
       {
          // Might be null if XA
 
-         tx = newAMQTransaction();
+         tx = newTransaction();
       }
 
       RefsOperation oper = (RefsOperation) tx.getProperty(TransactionPropertyIndexes.REFS_OPERATION);
@@ -1873,7 +1876,7 @@ public class ServerSessionImpl implements ServerSession, FailureListener
       }
       else
       {
-         tx = newAMQTransaction();
+         tx = newTransaction();
       }
 
    }
@@ -1896,4 +1899,12 @@ public class ServerSessionImpl implements ServerSession, FailureListener
       }
    }
 
+   private static class DefaultTransactionFactory implements TransactionFactory
+   {
+      @Override
+      public Transaction newTransaction(Xid xid, StorageManager storageManager, int timeoutSeconds)
+      {
+         return new TransactionImpl(xid, storageManager, timeoutSeconds);
+      }
+   }
 }

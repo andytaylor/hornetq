@@ -150,6 +150,7 @@ import org.hornetq.core.settings.HierarchicalRepository;
 import org.hornetq.core.settings.impl.AddressSettings;
 import org.hornetq.core.settings.impl.HierarchicalObjectRepository;
 import org.hornetq.core.transaction.ResourceManager;
+import org.hornetq.core.transaction.TransactionFactory;
 import org.hornetq.core.transaction.impl.ResourceManagerImpl;
 import org.hornetq.core.version.Version;
 import org.hornetq.spi.core.protocol.ProtocolManagerFactory;
@@ -1134,7 +1135,8 @@ public class HornetQServerImpl implements HornetQServer
                                       final boolean preAcknowledge,
                                       final boolean xa,
                                       final String defaultAddress,
-                                      final SessionCallback callback) throws Exception
+                                      final SessionCallback callback,
+                                      final TransactionFactory transactionFactory) throws Exception
    {
 
       if (securityStore != null)
@@ -1142,14 +1144,14 @@ public class HornetQServerImpl implements HornetQServer
          securityStore.authenticate(username, password);
       }
       final OperationContext context = storageManager.newContext(getExecutorFactory().getExecutor());
-      final ServerSessionImpl session = internalCreateSession(name, username, password, minLargeMessageSize, connection, autoCommitSends, autoCommitAcks, preAcknowledge, xa, defaultAddress, callback, context);
+      final ServerSessionImpl session = internalCreateSession(name, username, password, minLargeMessageSize, connection, autoCommitSends, autoCommitAcks, preAcknowledge, xa, defaultAddress, callback, context, transactionFactory);
 
       sessions.put(name, session);
 
       return session;
    }
 
-   protected ServerSessionImpl internalCreateSession(String name, String username, String password, int minLargeMessageSize, RemotingConnection connection, boolean autoCommitSends, boolean autoCommitAcks, boolean preAcknowledge, boolean xa, String defaultAddress, SessionCallback callback, OperationContext context) throws Exception
+   protected ServerSessionImpl internalCreateSession(String name, String username, String password, int minLargeMessageSize, RemotingConnection connection, boolean autoCommitSends, boolean autoCommitAcks, boolean preAcknowledge, boolean xa, String defaultAddress, SessionCallback callback, OperationContext context, TransactionFactory transactionFactory) throws Exception
    {
       return new ServerSessionImpl(name,
                                    username,
@@ -1171,7 +1173,8 @@ public class HornetQServerImpl implements HornetQServer
                                    defaultAddress == null ? null
                                       : new SimpleString(defaultAddress),
                                    callback,
-                                   context);
+                                   context,
+                                   transactionFactory);
    }
 
    protected SecurityStore getSecurityStore()
