@@ -286,11 +286,11 @@ public class StompSession implements SessionCallback
             queue = UUIDGenerator.getInstance().generateSimpleStringUUID();
             session.createQueue(SimpleString.toSimpleString(destination), queue, SimpleString.toSimpleString(selector), true, false);
          }
-         ((ServerSessionImpl) session).createConsumer(consumerID, queue, null, false, false, receiveCredits);
+         ((ServerSessionImpl) session).createConsumer(consumerID, queue, null, false, false, receiveCredits, null);
       }
       else
       {
-         ((ServerSessionImpl) session).createConsumer(consumerID, queue, SimpleString.toSimpleString(selector), false, false, receiveCredits);
+         ((ServerSessionImpl) session).createConsumer(consumerID, queue, SimpleString.toSimpleString(selector), false, false, receiveCredits, null);
       }
 
       StompSubscription subscription = new StompSubscription(subscriptionID, ack);

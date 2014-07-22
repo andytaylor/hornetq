@@ -253,6 +253,17 @@ public class BindingsImplTest extends UnitTestCase
       public void setWaitBeforeCommit(boolean waitBeforeCommit)
       {
       }
+
+      @Override
+      public boolean isFromAMQ()
+      {
+         return false;
+      }
+
+      @Override
+      public void setFromAMQ(boolean b)
+      {
+      }
    }
 
    private final class FakeFilter implements Filter

@@ -2947,6 +2947,10 @@ public class QueueImpl implements Queue
       @Override
       public void afterRollback(final Transaction tx)
       {
+         if (tx.isFromAMQ())
+         {
+            return;
+         }
          Map<QueueImpl, LinkedList<MessageReference>> queueMap = new HashMap<QueueImpl, LinkedList<MessageReference>>();
 
          long timeBase = System.currentTimeMillis();

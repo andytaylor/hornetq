@@ -26,6 +26,7 @@
 package org.hornetq.core.transaction.impl;
 
 import javax.transaction.xa.Xid;
+
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -69,6 +70,8 @@ public class TransactionImpl implements Transaction
    private volatile boolean containsPersistent;
 
    private int timeoutSeconds = -1;
+
+   private boolean fromAMQ;
 
    public TransactionImpl(final StorageManager storageManager, final int timeoutSeconds)
    {
@@ -526,5 +529,22 @@ public class TransactionImpl implements Transaction
          ", nr operations = " + getOperationsCount() +
          "]@" +
          Integer.toHexString(hashCode());
+   }
+
+   @Override
+   public boolean isFromAMQ()
+   {
+      return fromAMQ;
+   }
+
+   public void setFromAMQ()
+   {
+      this.fromAMQ = true;
+   }
+
+   @Override
+   public void setFromAMQ(boolean b)
+   {
+      this.fromAMQ = b;
    }
 }

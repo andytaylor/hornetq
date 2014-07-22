@@ -34,6 +34,7 @@ import org.hornetq.core.message.BodyEncoder;
 import org.hornetq.core.persistence.StorageManager;
 import org.hornetq.core.postoffice.Binding;
 import org.hornetq.core.postoffice.QueueBinding;
+import org.hornetq.core.server.BrowserListener;
 import org.hornetq.core.server.HandleStatus;
 import org.hornetq.core.server.HornetQMessageBundle;
 import org.hornetq.core.server.HornetQServerLogger;
@@ -150,7 +151,7 @@ public class ServerConsumerImpl implements ServerConsumer, ReadyListener
                              final ManagementService managementService) throws Exception
    {
       this(id, session, binding, filter, started, browseOnly, storageManager, callback,
-           preAcknowledge, strictUpdateDeliveryCount, managementService, true, null);
+           preAcknowledge, strictUpdateDeliveryCount, managementService, true, null, null);
    }
 
    public ServerConsumerImpl(final long id,
@@ -165,7 +166,8 @@ public class ServerConsumerImpl implements ServerConsumer, ReadyListener
                              final boolean strictUpdateDeliveryCount,
                              final ManagementService managementService,
                              final boolean supportLargeMessage,
-                             final Integer credits) throws Exception
+                             final Integer credits,
+                             final BrowserListener listener) throws Exception
    {
       this.id = id;
 
@@ -199,7 +201,7 @@ public class ServerConsumerImpl implements ServerConsumer, ReadyListener
 
       if (browseOnly)
       {
-         browserDeliverer = new BrowserDeliverer(messageQueue.iterator());
+         browserDeliverer = new BrowserDeliverer(messageQueue.iterator(), listener);
       }
       else
       {
@@ -1169,10 +1171,12 @@ public class ServerConsumerImpl implements ServerConsumer, ReadyListener
    private class BrowserDeliverer implements Runnable
    {
       private MessageReference current = null;
+      private BrowserListener listener = null;
 
-      public BrowserDeliverer(final LinkedListIterator<MessageReference> iterator)
+      public BrowserDeliverer(final LinkedListIterator<MessageReference> iterator, BrowserListener listener)
       {
          this.iterator = iterator;
+         this.listener = listener;
       }
 
       private final LinkedListIterator<MessageReference> iterator;
@@ -1222,6 +1226,11 @@ public class ServerConsumerImpl implements ServerConsumer, ReadyListener
                {
                   if (!iterator.hasNext())
                   {
+                     //here we need to send a null for amq browsers
+                     if (listener != null)
+                     {
+                        listener.browseFinished();
+                     }
                      break;
                   }
 
@@ -1255,6 +1264,15 @@ public class ServerConsumerImpl implements ServerConsumer, ReadyListener
          messageQueue.deliverAsync();
          boolean b = !iterator.hasNext();
          return b;
+      }
+   }
+
+   public void amqPutBackToDeliveringList(MessageReference ref)
+   {
+      synchronized (this.deliveringRefs)
+      {
+         ref.incrementDeliveryCount();
+         deliveringRefs.add(ref);
       }
    }
 }

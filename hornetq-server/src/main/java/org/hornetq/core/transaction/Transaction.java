@@ -70,4 +70,8 @@ public interface Transaction
    void setContainsPersistent();
 
    void setTimeout(int timeout);
+
+   boolean isFromAMQ();
+
+   void setFromAMQ(boolean b);
 }

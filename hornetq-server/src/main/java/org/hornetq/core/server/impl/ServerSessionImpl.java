@@ -26,6 +26,7 @@ package org.hornetq.core.server.impl;
 
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.Xid;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.hornetq.api.core.HornetQException;
@@ -62,6 +64,7 @@ import org.hornetq.core.remoting.FailureListener;
 import org.hornetq.core.security.CheckType;
 import org.hornetq.core.security.SecurityStore;
 import org.hornetq.core.server.BindingQueryResult;
+import org.hornetq.core.server.BrowserListener;
 import org.hornetq.core.server.HornetQMessageBundle;
 import org.hornetq.core.server.HornetQServer;
 import org.hornetq.core.server.HornetQServerLogger;
@@ -73,6 +76,7 @@ import org.hornetq.core.server.RoutingContext;
 import org.hornetq.core.server.ServerConsumer;
 import org.hornetq.core.server.ServerMessage;
 import org.hornetq.core.server.ServerSession;
+import org.hornetq.core.server.impl.QueueImpl.RefsOperation;
 import org.hornetq.core.server.management.ManagementService;
 import org.hornetq.core.server.management.Notification;
 import org.hornetq.core.transaction.ResourceManager;
@@ -114,9 +118,9 @@ public class ServerSessionImpl implements ServerSession, FailureListener
 
    private final int minLargeMessageSize;
 
-   private final boolean autoCommitSends;
+   private boolean autoCommitSends;
 
-   private final boolean autoCommitAcks;
+   private boolean autoCommitAcks;
 
    private final boolean preAcknowledge;
 
@@ -128,7 +132,7 @@ public class ServerSessionImpl implements ServerSession, FailureListener
 
    private Transaction tx;
 
-   private final boolean xa;
+   private boolean xa;
 
    private final StorageManager storageManager;
 
@@ -307,6 +311,11 @@ public class ServerSessionImpl implements ServerSession, FailureListener
          {
             // We only rollback local txs on close, not XA tx branches
 
+            if (tx.isFromAMQ())
+            {
+               //on session close, the rollback should be the same as core
+               tx.setFromAMQ(false);
+            }
             try
             {
                rollback(failed, false);
@@ -355,7 +364,16 @@ public class ServerSessionImpl implements ServerSession, FailureListener
                               final SimpleString filterString,
                               final boolean browseOnly) throws Exception
    {
-      this.createConsumer(consumerID, queueName, filterString, browseOnly, true, null);
+      this.createConsumer(consumerID, queueName, filterString, browseOnly, true, null, null);
+   }
+
+   public void createConsumer(final long consumerID,
+                              final SimpleString queueName,
+                              final SimpleString filterString,
+                              final boolean browseOnly,
+                              final BrowserListener listener) throws Exception
+   {
+      this.createConsumer(consumerID, queueName, filterString, browseOnly, true, null, listener);
    }
 
    public void createConsumer(final long consumerID,
@@ -363,7 +381,8 @@ public class ServerSessionImpl implements ServerSession, FailureListener
                               final SimpleString filterString,
                               final boolean browseOnly,
                               final boolean supportLargeMessage,
-                              final Integer credits) throws Exception
+                              final Integer credits,
+                              final BrowserListener listener) throws Exception
    {
       Binding binding = postOffice.getBinding(queueName);
 
@@ -388,7 +407,8 @@ public class ServerSessionImpl implements ServerSession, FailureListener
                                                        strictUpdateDeliveryCount,
                                                        managementService,
                                                        supportLargeMessage,
-                                                       credits);
+                                                       credits,
+                                                       listener);
       consumers.put(consumer.getID(), consumer);
 
       if (!browseOnly)
@@ -777,6 +797,16 @@ public class ServerSessionImpl implements ServerSession, FailureListener
    private TransactionImpl newTransaction()
    {
       return new TransactionImpl(storageManager, timeoutSeconds);
+   }
+
+   /**
+    * @return
+    */
+   private TransactionImpl newAMQTransaction()
+   {
+      TransactionImpl localTx = new TransactionImpl(storageManager, timeoutSeconds);
+      localTx.setFromAMQ();
+      return localTx;
    }
 
    /**
@@ -1289,6 +1319,20 @@ public class ServerSessionImpl implements ServerSession, FailureListener
       }
    }
 
+   public AtomicInteger getConsumerCredits(final long consumerID)
+   {
+      ServerConsumer consumer = consumers.get(consumerID);
+
+      if (consumer == null)
+      {
+         HornetQServerLogger.LOGGER.debug("There is no consumer with id " + consumerID);
+
+         return null;
+      }
+
+      return ((ServerConsumerImpl)consumer).getAvailableCredits();
+   }
+
    public void receiveConsumerCredits(final long consumerID, final int credits) throws Exception
    {
       ServerConsumer consumer = consumers.get(consumerID);
@@ -1749,6 +1793,106 @@ public class ServerSessionImpl implements ServerSession, FailureListener
       else
       {
          return Collections.emptyList();
+      }
+   }
+
+   public void enableXA() throws Exception
+   {
+      if (!this.xa)
+      {
+         if (this.tx != null)
+         {
+            //that's not expected, maybe a warning.
+            this.tx.rollback();
+            this.tx = null;
+         }
+
+         this.autoCommitAcks = false;
+         this.autoCommitSends = false;
+
+         this.xa = true;
+      }
+   }
+
+   public void enableTx() throws Exception
+   {
+      if (this.xa)
+      {
+         throw new IllegalStateException("Session is XA");
+      }
+
+      this.autoCommitAcks = false;
+      this.autoCommitSends = false;
+
+      if (this.tx != null)
+      {
+         //that's not expected, maybe a warning.
+         this.tx.rollback();
+         this.tx = null;
+      }
+
+      this.tx = newAMQTransaction();
+   }
+
+   //amq specific behavior
+   public void amqRollback() throws Exception
+   {
+      if (tx == null)
+      {
+         // Might be null if XA
+
+         tx = newAMQTransaction();
+      }
+
+      RefsOperation oper = (RefsOperation) tx.getProperty(TransactionPropertyIndexes.REFS_OPERATION);
+
+      if (oper != null)
+      {
+         List<MessageReference> ackRefs = oper.getReferencesToAcknowledge();
+         for (MessageReference ref : ackRefs)
+         {
+            Long consumerId = ref.getConsumerId();
+            ServerConsumer consumer = this.consumers.get(consumerId);
+            if (consumer != null)
+            {
+               ((ServerConsumerImpl)consumer).amqPutBackToDeliveringList(ref);
+            }
+            else
+            {
+               //consumer must have been closed, cancel to queue
+               ref.getQueue().cancel(tx, ref);
+            }
+         }
+      }
+
+      tx.rollback();
+
+      if (xa)
+      {
+         tx = null;
+      }
+      else
+      {
+         tx = newAMQTransaction();
+      }
+
+   }
+
+   /**
+    * The failed flag is used here to control delivery count.
+    * If set to true the delivery count won't decrement.
+    */
+   public void amqCloseConsumer(long consumerID, boolean failed) throws Exception
+   {
+      final ServerConsumer consumer = consumers.get(consumerID);
+
+      if (consumer != null)
+      {
+         consumer.close(failed);
+      }
+      else
+      {
+         HornetQServerLogger.LOGGER.cannotFindConsumer(consumerID);
       }
    }
 
