@@ -279,6 +279,18 @@ public class QueueControlUsingCoreTest extends QueueControlTest
             proxy.invokeOperation("resume");
          }
 
+         @Override
+         public void pauseRouting()
+         {
+
+         }
+
+         @Override
+         public void resumeRouting()
+         {
+
+         }
+
          public boolean isPaused() throws Exception
          {
             return (Boolean) proxy.invokeOperation("isPaused");

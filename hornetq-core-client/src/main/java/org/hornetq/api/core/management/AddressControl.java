@@ -74,4 +74,14 @@ public interface AddressControl
     * Returns the names of all bindings (both queues and diverts) bound to this address
     */
    String[] getBindingNames() throws Exception;
+
+   /**
+    * Pauses the address, clients will be notified that this address is paused
+    */
+   void pause();
+
+   /**
+    * resumes the address, clients will be notified that this address now receives messages
+    */
+   void resume();
 }

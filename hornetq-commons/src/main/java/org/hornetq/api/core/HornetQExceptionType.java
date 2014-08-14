@@ -252,6 +252,14 @@ public enum HornetQExceptionType
          return new HornetQClusterSecurityException(msg);
       }
 
+   },
+   ADDRESS_PAUSED(213)
+   {
+      @Override
+      public HornetQException createException(String msg)
+      {
+         return new HornetQAddressPausedException();
+      }
    };
 
    private static final Map<Integer, HornetQExceptionType> TYPE_MAP;

@@ -357,6 +357,19 @@ public class JMSQueueControlImpl extends StandardMBean implements JMSQueueContro
       coreQueueControl.resume();
    }
 
+   @Override
+   public void pauseRouting()
+   {
+      coreQueueControl.pauseRouting();
+   }
+
+   @Override
+   public void resumeRouting()
+   {
+      coreQueueControl.resumeRouting();
+   }
+
+
    public String getSelector()
    {
       return coreQueueControl.getFilter();

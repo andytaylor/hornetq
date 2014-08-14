@@ -126,6 +126,19 @@ public class AddressControlImpl extends AbstractControl implements AddressContro
       }
    }
 
+   @Override
+   public void pause()
+   {
+      postOffice.pauseAddress(address);
+   }
+
+
+   @Override
+   public void resume()
+   {
+      postOffice.resumeAddress(address);
+   }
+
    public Object[] getRoles() throws Exception
    {
       clearIO();

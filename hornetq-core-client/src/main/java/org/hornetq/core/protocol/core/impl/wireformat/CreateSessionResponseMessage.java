@@ -31,6 +31,13 @@ public class CreateSessionResponseMessage extends PacketImpl
       this.serverVersion = serverVersion;
    }
 
+   public CreateSessionResponseMessage(final int serverVersion, final byte type)
+   {
+      super(type);
+
+      this.serverVersion = serverVersion;
+   }
+
    public CreateSessionResponseMessage()
    {
       super(CREATESESSION_RESP);

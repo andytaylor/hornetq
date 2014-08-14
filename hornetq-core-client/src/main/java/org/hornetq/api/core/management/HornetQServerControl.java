@@ -617,5 +617,11 @@ public interface HornetQServerControl
 
    @Operation(desc = "force the server to stop and to scale down to another server", impact = MBeanOperationInfo.UNKNOWN)
    void scaleDown(@Parameter(name = "name", desc = "The connector to use to scale down, if not provided the first appropriate connector will be used")String connector) throws Exception;
+
+   @Operation(desc = "stop messages being sent to all addresses", impact = MBeanOperationInfo.UNKNOWN)
+   void pauseAddresses();
+
+   @Operation(desc = "resume messages being sent to all addresses", impact = MBeanOperationInfo.UNKNOWN)
+   void resumeAddresses();
 }
 

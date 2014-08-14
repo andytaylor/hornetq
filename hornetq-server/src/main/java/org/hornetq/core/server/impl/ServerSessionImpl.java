@@ -1818,6 +1818,18 @@ public class ServerSessionImpl implements ServerSession, FailureListener
       }
    }
 
+   @Override
+   public void pauseAddress(SimpleString address)
+   {
+      callback.pauseAddress(address);
+   }
+
+   @Override
+   public void resumeAddress(SimpleString address)
+   {
+      callback.resumeAddress(address);
+   }
+
    private static class DefaultTransactionFactory implements TransactionFactory
    {
       @Override

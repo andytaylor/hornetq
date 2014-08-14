@@ -91,4 +91,9 @@ public interface PostOffice extends HornetQComponent
 
    boolean isAddressBound(final SimpleString address) throws Exception;
 
+   void pauseAddress(SimpleString address);
+
+   void resumeAddress(SimpleString address);
+
+   java.util.Set<SimpleString> getPausedAddresses();
 }

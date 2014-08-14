@@ -14,6 +14,7 @@ package org.hornetq.api.core.client;
 
 import org.hornetq.api.config.HornetQDefaultConfiguration;
 import org.hornetq.api.core.DiscoveryGroupConfiguration;
+import org.hornetq.api.core.SimpleString;
 import org.hornetq.api.core.TransportConfiguration;
 import org.hornetq.api.core.client.loadbalance.RoundRobinConnectionLoadBalancingPolicy;
 import org.hornetq.core.client.impl.ServerLocatorImpl;
@@ -107,6 +108,8 @@ public final class HornetQClient
    public static final boolean DEFAULT_HA = false;
 
    public static final String DEFAULT_CORE_PROTOCOL = "CORE";
+
+   public static final SimpleString ROOT_WILDCARD = new SimpleString("#");
 
    /**
     * Create a ServerLocator which creates session factories using a static list of transportConfigurations, the ServerLocator is not updated automatically

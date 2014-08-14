@@ -15,6 +15,7 @@ package org.hornetq.core.client;
 
 
 import org.hornetq.api.core.HornetQAddressFullException;
+import org.hornetq.api.core.HornetQAddressPausedException;
 import org.hornetq.api.core.HornetQConnectionTimedOutException;
 import org.hornetq.api.core.HornetQDisconnectedException;
 import org.hornetq.api.core.HornetQIllegalStateException;
@@ -27,6 +28,7 @@ import org.hornetq.api.core.HornetQObjectClosedException;
 import org.hornetq.api.core.HornetQTransactionOutcomeUnknownException;
 import org.hornetq.api.core.HornetQTransactionRolledBackException;
 import org.hornetq.api.core.HornetQUnBlockedException;
+import org.hornetq.api.core.SimpleString;
 import org.hornetq.core.cluster.DiscoveryGroup;
 import org.hornetq.spi.core.remoting.Connection;
 import org.jboss.logging.annotations.Cause;
@@ -240,5 +242,9 @@ public interface HornetQClientMessageBundle
    @Message(id = 119060, value = "Large Message Transmission interrupted on consumer shutdown."
          , format = Message.Format.MESSAGE_FORMAT)
    HornetQLargeMessageInterruptedException largeMessageInterrupted();
+
+   @Message(id = 119061, value = "address {0} has been paused by the server rejecting send"
+         , format = Message.Format.MESSAGE_FORMAT)
+   HornetQAddressPausedException addressPaused(SimpleString address);
 
 }

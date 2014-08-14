@@ -182,6 +182,17 @@ public class ProtonSession implements SessionCallback
       }
    }
 
+   @Override
+   public void pauseAddress(SimpleString address)
+   {
+   }
+
+   @Override
+   public void resumeAddress(SimpleString address)
+   {
+
+   }
+
    public OperationContext getContext()
    {
       return context;

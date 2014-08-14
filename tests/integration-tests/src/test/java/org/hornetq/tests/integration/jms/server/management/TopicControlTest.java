@@ -13,6 +13,7 @@
 package org.hornetq.tests.integration.jms.server.management;
 
 import javax.jms.Connection;
+import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
@@ -25,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.hornetq.api.core.HornetQAddressPausedException;
 import org.hornetq.api.core.TransportConfiguration;
 import org.hornetq.api.core.management.ObjectNameBuilder;
 import org.hornetq.api.jms.HornetQJMSClient;
@@ -577,6 +579,70 @@ public class TopicControlTest extends ManagementTestBase
       notif = listener.getNotification();
       assertEquals(JMSNotificationType.TOPIC_DESTROYED.toString(), notif.getType());
       assertEquals(testTopicName, notif.getMessage());
+   }
+
+   @Test
+   public void testPauseTopic() throws Exception
+   {
+      Connection connection_1 = JMSUtil.createConnection(InVMConnectorFactory.class.getName());
+      JMSUtil.createConsumer(connection_1, topic);
+
+      TopicControl topicControl = createManagementControl();
+
+      Assert.assertEquals(0, topicControl.getMessagesAdded());
+
+      Session sess = connection_1.createSession(false, Session.AUTO_ACKNOWLEDGE);
+      MessageProducer prod = sess.createProducer(topic);
+
+      TextMessage msg1 = sess.createTextMessage("tst1");
+      prod.send(msg1);
+      TextMessage msg2 = sess.createTextMessage("tst1");
+      prod.send(msg2);
+
+      Assert.assertEquals(2, topicControl.getMessagesAdded());
+
+      topicControl.pauseRouting();
+
+      //send some messages on the same producer to make sure it gets notified, this may take a wee while as we are async so send a few
+      TextMessage msg3 = sess.createTextMessage("tst1");
+      try
+      {
+         for (int i = 0; i < 10; i++)
+         {
+            prod.send(msg3);
+         }
+         fail("Expected exception");
+      }
+      catch (JMSException e)
+      {
+         assertNotNull(e.getCause());
+         assertTrue(e.getCause() instanceof HornetQAddressPausedException);
+      }
+
+
+      try
+      {
+         JMSUtil.sendMessages(topic,1);
+         fail("Expected exception");
+      }
+      catch (Exception e)
+      {
+         assertNotNull(e.getCause());
+         assertTrue(e.getCause() instanceof HornetQAddressPausedException);
+      }
+
+      String topicBinding = "/topic/" + RandomUtil.randomString();
+      String topicName = RandomUtil.randomString();
+      serverManager.createTopic(false, topicName, topicBinding);
+      HornetQTopic topic2 = (HornetQTopic) HornetQJMSClient.createTopic(topicName);
+
+      JMSUtil.sendMessages(topic2,1);
+
+      topicControl.resumeRouting();
+
+      JMSUtil.sendMessages(topic,1);
+
+      connection_1.close();
    }
 
    // Package protected ---------------------------------------------

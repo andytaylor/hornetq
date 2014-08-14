@@ -335,6 +335,18 @@ public class AMQSession implements SessionCallback
       }
    }
 
+   @Override
+   public void pauseAddress(SimpleString address)
+   {
+      //noop
+   }
+
+   @Override
+   public void resumeAddress(SimpleString address)
+   {
+      //noop
+   }
+
    private void checkTx(TransactionId inId)
    {
       if (this.txId == null)

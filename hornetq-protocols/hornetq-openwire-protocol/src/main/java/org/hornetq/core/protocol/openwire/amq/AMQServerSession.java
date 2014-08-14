@@ -217,4 +217,15 @@ public class AMQServerSession extends ServerSessionImpl
       return (AMQServerConsumer) this.consumers.get(nativeId);
    }
 
+   @Override
+   public void pauseAddress(SimpleString address)
+   {
+      //noop
+   }
+
+   @Override
+   public void resumeAddress(SimpleString address)
+   {
+      //noop
+   }
 }

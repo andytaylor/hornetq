@@ -27,6 +27,7 @@ import org.hornetq.core.protocol.core.impl.wireformat.CheckFailoverReplyMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.CreateQueueMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.CreateSessionMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.CreateSessionResponseMessage;
+import org.hornetq.core.protocol.core.impl.wireformat.CreateSessionResponseMessageV2;
 import org.hornetq.core.protocol.core.impl.wireformat.HornetQExceptionMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.ReattachSessionMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.ReattachSessionResponseMessage;
@@ -190,7 +191,14 @@ public class HornetQPacketHandler implements ChannelHandler
          // TODO - where is this removed?
          protocolManager.addSessionHandler(request.getName(), handler);
 
-         response = new CreateSessionResponseMessage(server.getVersion().getIncrementingVersion());
+         if (channel.supports(PacketImpl.CREATESESSION_RESP_V2))
+         {
+            response = new CreateSessionResponseMessageV2(server.getVersion().getIncrementingVersion(), server.getPostOffice().getPausedAddresses());
+         }
+         else
+         {
+            response = new CreateSessionResponseMessage(server.getVersion().getIncrementingVersion());
+         }
       }
       catch (HornetQException e)
       {

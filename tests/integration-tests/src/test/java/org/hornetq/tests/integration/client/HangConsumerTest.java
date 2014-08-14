@@ -622,6 +622,18 @@ public class HangConsumerTest extends ServiceTestBase
          //To change body of implemented methods use File | Settings | File Templates.
       }
 
+      @Override
+      public void pauseAddress(SimpleString address)
+      {
+
+      }
+
+      @Override
+      public void resumeAddress(SimpleString address)
+      {
+
+      }
+
 
    }
 

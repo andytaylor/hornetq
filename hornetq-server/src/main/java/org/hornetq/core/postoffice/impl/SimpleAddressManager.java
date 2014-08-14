@@ -12,6 +12,7 @@
  */
 package org.hornetq.core.postoffice.impl;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -48,6 +49,8 @@ public class SimpleAddressManager implements AddressManager
    private final ConcurrentMap<SimpleString, Binding> nameMap = new ConcurrentHashMap<SimpleString, Binding>();
 
    private final ConcurrentHashSet<SimpleString> pendingDeletes = new ConcurrentHashSet<SimpleString>();
+
+   private final ConcurrentHashSet<SimpleString> pausedAddresses = new ConcurrentHashSet<>();
 
    private final BindingsFactory bindingsFactory;
 
@@ -122,6 +125,24 @@ public class SimpleAddressManager implements AddressManager
       return nameMap;
    }
 
+   @Override
+   public void addPausedAddress(SimpleString address)
+   {
+      pausedAddresses.add(address);
+   }
+
+   @Override
+   public HashSet<SimpleString> getPausedAddresses()
+   {
+      return new HashSet<>(pausedAddresses);
+   }
+
+   @Override
+   public void removePausedAddress(SimpleString address)
+   {
+      pausedAddresses.remove(address);
+   }
+
    public Bindings getMatchingBindings(final SimpleString address) throws Exception
    {
       Address add = new AddressImpl(address);
@@ -145,6 +166,7 @@ public class SimpleAddressManager implements AddressManager
    {
       nameMap.clear();
       mappings.clear();
+      pausedAddresses.clear();
    }
 
    protected void removeBindingInternal(final SimpleString address, final SimpleString bindableName)

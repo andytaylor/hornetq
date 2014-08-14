@@ -116,4 +116,10 @@ public interface ClientSessionInternal extends ClientSession
 
    boolean isClosing();
 
+   /**
+    * checks the state of an address to see if it can be sent messages
+    * @param address the address to check
+    * @throws HornetQException
+    */
+   void checkAddress(SimpleString address) throws HornetQException;
 }

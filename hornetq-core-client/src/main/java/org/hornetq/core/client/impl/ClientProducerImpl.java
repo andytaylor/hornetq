@@ -228,6 +228,8 @@ public class ClientProducerImpl implements ClientProducerInternal
 
       try
       {
+         session.checkAddress(address1);
+
          MessageInternal msgI = (MessageInternal) msg;
 
          ClientProducerCredits theCredits;

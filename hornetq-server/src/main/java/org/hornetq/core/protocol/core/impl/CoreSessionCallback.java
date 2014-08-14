@@ -13,8 +13,10 @@
 package org.hornetq.core.protocol.core.impl;
 
 import org.hornetq.api.core.SimpleString;
+import org.hornetq.api.core.client.ServerEvent;
 import org.hornetq.core.protocol.core.Channel;
 import org.hornetq.core.protocol.core.Packet;
+import org.hornetq.core.protocol.core.impl.wireformat.ServerEventMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.DisconnectConsumerMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.SessionProducerCreditsFailMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.SessionProducerCreditsMessage;
@@ -122,5 +124,17 @@ public final class CoreSessionCallback implements SessionCallback
       {
          HornetQServerLogger.LOGGER.warnDisconnectOldClient(queueName);
       }
+   }
+
+   @Override
+   public void pauseAddress(SimpleString address)
+   {
+      channel.send(new ServerEventMessage(address, ServerEvent.ADDRESS_PAUSED));
+   }
+
+   @Override
+   public void resumeAddress(SimpleString address)
+   {
+      channel.send(new ServerEventMessage(address, ServerEvent.ADDRESS_RESUMED));
    }
 }

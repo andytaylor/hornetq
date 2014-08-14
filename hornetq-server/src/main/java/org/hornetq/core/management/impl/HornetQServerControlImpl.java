@@ -1976,6 +1976,34 @@ public class HornetQServerControlImpl extends AbstractControl implements HornetQ
       server.stop(true);
    }
 
+   @Override
+   public void pauseAddresses()
+   {
+      clearIO();
+      try
+      {
+         server.getPostOffice().pauseAddress(null);
+      }
+      finally
+      {
+         blockOnIO();
+      }
+   }
+
+   @Override
+   public void resumeAddresses()
+   {
+      clearIO();
+      try
+      {
+         server.getPostOffice().resumeAddress(null);
+      }
+      finally
+      {
+         blockOnIO();
+      }
+   }
+
    // NotificationEmitter implementation ----------------------------
 
    public void removeNotificationListener(final NotificationListener listener,

@@ -210,6 +210,16 @@ public class StompSession implements SessionCallback
       }
    }
 
+   @Override
+   public void pauseAddress(SimpleString address)
+   {
+   }
+
+   @Override
+   public void resumeAddress(SimpleString address)
+   {
+   }
+
    public void acknowledge(String messageID, String subscriptionID) throws Exception
    {
       long id = Long.parseLong(messageID);

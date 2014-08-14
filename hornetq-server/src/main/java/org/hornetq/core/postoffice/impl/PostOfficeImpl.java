@@ -34,6 +34,7 @@ import org.hornetq.api.core.HornetQNonExistentQueueException;
 import org.hornetq.api.core.Message;
 import org.hornetq.api.core.Pair;
 import org.hornetq.api.core.SimpleString;
+import org.hornetq.api.core.client.HornetQClient;
 import org.hornetq.api.core.management.CoreNotificationType;
 import org.hornetq.api.core.management.ManagementHelper;
 import org.hornetq.api.core.management.NotificationType;
@@ -61,6 +62,7 @@ import org.hornetq.core.server.QueueFactory;
 import org.hornetq.core.server.RouteContextList;
 import org.hornetq.core.server.RoutingContext;
 import org.hornetq.core.server.ServerMessage;
+import org.hornetq.core.server.ServerSession;
 import org.hornetq.core.server.group.GroupingHandler;
 import org.hornetq.core.server.impl.RoutingContextImpl;
 import org.hornetq.core.server.impl.ServerMessageImpl;
@@ -565,6 +567,44 @@ public class PostOfficeImpl implements PostOffice, NotificationListener, Binding
    {
       Bindings bindings = getBindingsForAddress(address);
       return bindings != null && !bindings.getBindings().isEmpty();
+   }
+
+   @Override
+   public void pauseAddress(SimpleString address)
+   {
+      SimpleString addressToUse = address;
+      if (addressToUse == null)
+      {
+         addressToUse = HornetQClient.ROOT_WILDCARD;
+      }
+      addressManager.addPausedAddress(addressToUse);
+      Set<ServerSession> sessions = server.getSessions();
+      for (ServerSession session : sessions)
+      {
+         session.pauseAddress(addressToUse);
+      }
+   }
+
+   @Override
+   public void resumeAddress(SimpleString address)
+   {
+      SimpleString addressToUse = address;
+      if (addressToUse == null)
+      {
+         addressToUse = HornetQClient.ROOT_WILDCARD;
+      }
+      addressManager.removePausedAddress(addressToUse);
+      Set<ServerSession> sessions = server.getSessions();
+      for (ServerSession session : sessions)
+      {
+         session.resumeAddress(addressToUse);
+      }
+   }
+
+   @Override
+   public Set<SimpleString> getPausedAddresses()
+   {
+      return addressManager.getPausedAddresses();
    }
 
 

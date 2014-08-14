@@ -911,6 +911,38 @@ public class QueueControlImpl extends AbstractControl implements QueueControl
       }
    }
 
+   @Override
+   public void pauseRouting()
+   {
+      checkStarted();
+
+      clearIO();
+      try
+      {
+         postOffice.pauseAddress(queue.getAddress());
+      }
+      finally
+      {
+         blockOnIO();
+      }
+   }
+
+   @Override
+   public void resumeRouting()
+   {
+      checkStarted();
+
+      clearIO();
+      try
+      {
+         postOffice.resumeAddress(queue.getAddress());
+      }
+      finally
+      {
+         blockOnIO();
+      }
+   }
+
    public boolean isPaused() throws Exception
    {
       checkStarted();

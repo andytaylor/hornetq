@@ -21,6 +21,7 @@ import java.security.PrivilegedAction;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executor;
 
 import org.hornetq.api.core.HornetQBuffer;
@@ -30,7 +31,9 @@ import org.hornetq.api.core.Message;
 import org.hornetq.api.core.SimpleString;
 import org.hornetq.api.core.client.ClientConsumer;
 import org.hornetq.api.core.client.ClientSession;
+import org.hornetq.api.core.client.HornetQClient;
 import org.hornetq.api.core.client.SendAcknowledgementHandler;
+import org.hornetq.api.core.client.ServerEvent;
 import org.hornetq.core.client.HornetQClientLogger;
 import org.hornetq.core.client.HornetQClientMessageBundle;
 import org.hornetq.core.client.impl.AddressQueryImpl;
@@ -45,6 +48,7 @@ import org.hornetq.core.protocol.core.ChannelHandler;
 import org.hornetq.core.protocol.core.CommandConfirmationHandler;
 import org.hornetq.core.protocol.core.CoreRemotingConnection;
 import org.hornetq.core.protocol.core.Packet;
+import org.hornetq.core.protocol.core.impl.wireformat.ServerEventMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.CreateQueueMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.CreateSessionMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.CreateSharedQueueMessage;
@@ -111,15 +115,17 @@ public class HornetQSessionContext extends SessionContext
    private final Channel sessionChannel;
    private final int serverVersion;
    private int confirmationWindow;
+   private final AddressState addressState;
 
 
-   public HornetQSessionContext(String name, RemotingConnection remotingConnection, Channel sessionChannel, int serverVersion, int confirmationWindow)
+   public HornetQSessionContext(String name, RemotingConnection remotingConnection, Channel sessionChannel, int serverVersion, int confirmationWindow, Set<SimpleString> pausedAddresses)
    {
       super(name, remotingConnection);
 
       this.sessionChannel = sessionChannel;
       this.serverVersion = serverVersion;
       this.confirmationWindow = confirmationWindow;
+      this.addressState = new AddressState(pausedAddresses);
 
       ChannelHandler handler = new ClientSessionPacketHandler();
       sessionChannel.setHandler(handler);
@@ -194,6 +200,27 @@ public class HornetQSessionContext extends SessionContext
       // if the server is sending a disconnect
       // any pending blocked operation could hang without this
       sessionChannel.returnBlocking();
+   }
+
+   public void notifyServerEvent(SimpleString address, ServerEvent serverEvent)
+   {
+      if (serverEvent == ServerEvent.ADDRESS_PAUSED)
+      {
+         addressState.addPausedAddress(address);
+      }
+      else if (serverEvent == ServerEvent.ADDRESS_RESUMED)
+      {
+         addressState.removePausedAddress(address);
+      }
+   }
+
+   @Override
+   public void checkAddress(SimpleString address) throws HornetQException
+   {
+      if (addressState.isPaused(address))
+      {
+         throw HornetQClientMessageBundle.BUNDLE.addressPaused(address);
+      }
    }
 
 
@@ -632,7 +659,8 @@ public class HornetQSessionContext extends SessionContext
       {
          try
          {
-            getCreateChannel().sendBlocking(createRequest, PacketImpl.CREATESESSION_RESP);
+            getCreateChannel().sendBlocking(createRequest, PacketImpl.CREATESESSION_RESP_V2);
+            addressState.clear();
             retry = false;
          }
          catch (HornetQException e)
@@ -792,6 +820,11 @@ public class HornetQSessionContext extends SessionContext
       handleReceiveProducerFailCredits(message.getAddress(), message.getCredits());
    }
 
+   protected void handleReceiveAddressPaused(ServerEventMessage packet)
+   {
+      handleServerEvent(packet.getAddress(), packet.getServerEvent());
+   }
+
    class ClientSessionPacketHandler implements ChannelHandler
    {
 
@@ -835,6 +868,12 @@ public class HornetQSessionContext extends SessionContext
                case PacketImpl.SESS_PRODUCER_FAIL_CREDITS:
                {
                   handleReceiveProducerFailCredits((SessionProducerCreditsFailMessage) packet);
+
+                  break;
+               }
+               case PacketImpl.ADDRESS_STATE_CHANGED:
+               {
+                  handleReceiveAddressPaused((ServerEventMessage) packet);
 
                   break;
                }
@@ -919,5 +958,49 @@ public class HornetQSessionContext extends SessionContext
       conn.write(buffer, false, false);
    }
 
+   private class AddressState
+   {
+      private boolean isGlobal = false;
+
+      private Set<SimpleString> pausedAddresses;
+
+      public AddressState(Set<SimpleString> pausedAddresses)
+      {
+         this.pausedAddresses = pausedAddresses;
+         if (pausedAddresses.contains(HornetQClient.ROOT_WILDCARD))
+         {
+            isGlobal = true;
+         }
+      }
+
+      public void addPausedAddress(SimpleString address)
+      {
+         if (HornetQClient.ROOT_WILDCARD.equals(address))
+         {
+            isGlobal = true;
+         }
+         pausedAddresses.add(address);
+      }
+
+      public boolean isPaused(SimpleString address)
+      {
+         return isGlobal || pausedAddresses.contains(address);
+      }
+
+      public void removePausedAddress(SimpleString address)
+      {
+         if (HornetQClient.ROOT_WILDCARD.equals(address))
+         {
+            isGlobal = false;
+         }
+         pausedAddresses.remove(address);
+      }
+
+      public void clear()
+      {
+         isGlobal = false;
+         pausedAddresses.clear();
+      }
+   }
 
 }

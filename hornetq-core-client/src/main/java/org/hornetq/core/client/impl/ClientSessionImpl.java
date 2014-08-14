@@ -895,6 +895,12 @@ public final class ClientSessionImpl implements ClientSessionInternal, FailureLi
       }
    }
 
+   @Override
+   public void checkAddress(SimpleString address) throws HornetQException
+   {
+      sessionContext.checkAddress(address);
+   }
+
    public void close() throws HornetQException
    {
       if (closed)

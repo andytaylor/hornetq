@@ -42,4 +42,8 @@ public interface SessionCallback
    void removeReadyListener(ReadyListener listener);
 
    void disconnect(long consumerId, String queueName);
+
+   void pauseAddress(SimpleString address);
+
+   void resumeAddress(SimpleString address);
 }

@@ -46,4 +46,10 @@ public interface AddressManager
    Binding getBinding(SimpleString queueName);
 
    Map<SimpleString, Binding> getBindings();
+
+   void addPausedAddress(SimpleString address);
+
+   java.util.Set<SimpleString> getPausedAddresses();
+
+   void removePausedAddress(SimpleString address);
 }

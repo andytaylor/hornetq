@@ -265,6 +265,18 @@ public class JMSTopicControlImpl extends StandardMBean implements TopicControl
       }
    }
 
+   @Override
+   public void pauseRouting()
+   {
+      addressControl.pause();
+   }
+
+   @Override
+   public void resumeRouting()
+   {
+      addressControl.resume();
+   }
+
    // Package protected ---------------------------------------------
 
    // Protected -----------------------------------------------------

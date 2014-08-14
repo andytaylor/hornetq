@@ -39,7 +39,7 @@ import org.hornetq.core.protocol.core.impl.wireformat.ClusterTopologyChangeMessa
 import org.hornetq.core.protocol.core.impl.wireformat.ClusterTopologyChangeMessage_V2;
 import org.hornetq.core.protocol.core.impl.wireformat.ClusterTopologyChangeMessage_V3;
 import org.hornetq.core.protocol.core.impl.wireformat.CreateSessionMessage;
-import org.hornetq.core.protocol.core.impl.wireformat.CreateSessionResponseMessage;
+import org.hornetq.core.protocol.core.impl.wireformat.CreateSessionResponseMessageV2;
 import org.hornetq.core.protocol.core.impl.wireformat.DisconnectMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.DisconnectMessage_V2;
 import org.hornetq.core.protocol.core.impl.wireformat.Ping;
@@ -289,7 +289,7 @@ public class HornetQClientProtocolManager implements ClientProtocolManager
          throw HornetQClientMessageBundle.BUNDLE.clientSessionClosed();
 
       Channel sessionChannel = null;
-      CreateSessionResponseMessage response = null;
+      CreateSessionResponseMessageV2 response = null;
 
       boolean retry;
       do
@@ -331,7 +331,7 @@ public class HornetQClientProtocolManager implements ClientProtocolManager
             try
             {
                // channel1 reference here has to go away
-               response = (CreateSessionResponseMessage) getChannel1().sendBlocking(request, PacketImpl.CREATESESSION_RESP);
+               response = (CreateSessionResponseMessageV2) getChannel1().sendBlocking(request, PacketImpl.CREATESESSION_RESP_V2);
             }
             catch (HornetQException cause)
             {
@@ -390,7 +390,7 @@ public class HornetQClientProtocolManager implements ClientProtocolManager
 
 
       // these objects won't be null, otherwise it would keep retrying on the previous loop
-      return new HornetQSessionContext(name, connection, sessionChannel, response.getServerVersion(), confirmationWindowSize);
+      return new HornetQSessionContext(name, connection, sessionChannel, response.getServerVersion(), confirmationWindowSize, response.getPausedAddresses());
 
    }
 

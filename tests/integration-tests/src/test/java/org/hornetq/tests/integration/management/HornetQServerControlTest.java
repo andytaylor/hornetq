@@ -17,6 +17,8 @@ import javax.transaction.xa.Xid;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.hornetq.api.core.HornetQAddressPausedException;
+import org.hornetq.api.core.HornetQException;
 import org.hornetq.api.core.SimpleString;
 import org.hornetq.api.core.TransportConfiguration;
 import org.hornetq.api.core.client.ClientConsumer;
@@ -971,6 +973,134 @@ public class HornetQServerControlTest extends ManagementTestBase
       System.out.println("HornetQServerControlTest.testCommitPreparedTransactions");
    }
 
+   @Test
+   public void testPauseAddresses() throws Exception
+   {
+      SimpleString atestq1 = new SimpleString("BasicTestq1");
+      SimpleString atestq2 = new SimpleString("BasicTestq2");
+      SimpleString atestq3 = new SimpleString("BasicTestq3");
+      SimpleString atestq4 = new SimpleString("BasicTestq4");
+
+      ServerLocator locator = HornetQClient.createServerLocatorWithoutHA(new TransportConfiguration(UnitTestCase.INVM_CONNECTOR_FACTORY));
+      ClientSessionFactory csf = createSessionFactory(locator);
+      ClientSession clientSession = csf.createSession(true, false, false);
+      clientSession.createQueue(atestq1, atestq1, null, true);
+      clientSession.createQueue(atestq2, atestq2, null, true);
+      clientSession.createQueue(atestq3, atestq3, null, true);
+      clientSession.createQueue(atestq4, atestq4, null, true);
+
+      ClientMessage m1 = createTextMessage(clientSession, "");
+      ClientMessage m2 = createTextMessage(clientSession, "");
+      ClientMessage m3 = createTextMessage(clientSession, "");
+      ClientMessage m4 = createTextMessage(clientSession, "");
+      ClientProducer clientProducer = clientSession.createProducer();
+      clientProducer.send(atestq1, m1);
+      clientProducer.send(atestq2, m2);
+      clientProducer.send(atestq3, m3);
+      clientProducer.send(atestq4, m4);
+      HornetQServerControl serverControl = createManagementControl();
+      serverControl.pauseAddresses();
+      boolean failed = false;
+      for (int i = 0; i < 10; i++)
+      {
+         try
+         {
+            clientProducer.send(atestq1, m1);
+         }
+         catch (HornetQException e)
+         {
+            failed = true;
+            assertTrue(e instanceof HornetQAddressPausedException);
+         }
+      }
+      assertTrue(failed);
+      try
+      {
+         clientProducer.send(atestq2, m2);
+         fail("should throw exception");
+      }
+      catch (HornetQException e)
+      {
+         assertTrue(e instanceof HornetQAddressPausedException);
+      }
+      try
+      {
+         clientProducer.send(atestq3, m3);
+         fail("should throw exception");
+      }
+      catch (HornetQException e)
+      {
+         assertTrue(e instanceof HornetQAddressPausedException);
+      }
+      try
+      {
+         clientProducer.send(atestq4, m4);
+         fail("should throw exception");
+      }
+      catch (HornetQException e)
+      {
+         assertTrue(e instanceof HornetQAddressPausedException);
+      }
+
+      ClientSession clientSession2 = csf.createSession(true, false, false);
+      ClientProducer clientProducer2 = clientSession2.createProducer();
+      try
+      {
+         clientProducer2.send(atestq1, m1);
+         fail("should throw exception");
+      }
+      catch (HornetQException e)
+      {
+         assertTrue(e instanceof HornetQAddressPausedException);
+      }
+      try
+      {
+         clientProducer2.send(atestq2, m2);
+         fail("should throw exception");
+      }
+      catch (HornetQException e)
+      {
+         assertTrue(e instanceof HornetQAddressPausedException);
+      }
+      try
+      {
+         clientProducer2.send(atestq3, m3);
+         fail("should throw exception");
+      }
+      catch (HornetQException e)
+      {
+         assertTrue(e instanceof HornetQAddressPausedException);
+      }
+      try
+      {
+         clientProducer2.send(atestq4, m4);
+         fail("should throw exception");
+      }
+      catch (HornetQException e)
+      {
+         assertTrue(e instanceof HornetQAddressPausedException);
+      }
+      serverControl.resumeAddresses();
+
+      boolean passed = false;
+      for (int i = 0; i < 10; i++)
+      {
+         try
+         {
+            clientProducer.send(atestq1, m1);
+            passed = true;
+            break;
+         }
+         catch (HornetQException e)
+         {
+
+         }
+      }
+      assertTrue(passed);
+      clientProducer.send(atestq2, m2);
+      clientProducer.send(atestq3, m3);
+      clientProducer.send(atestq4, m4);
+   }
    @Test
    public void testScaleDownWithConnector() throws Exception
    {

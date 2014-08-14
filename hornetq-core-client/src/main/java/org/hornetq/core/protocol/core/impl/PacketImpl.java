@@ -242,6 +242,10 @@ public class PacketImpl implements Packet
 
    public static final byte SCALEDOWN_ANNOUNCEMENT = -6;
 
+   public static final byte ADDRESS_STATE_CHANGED = -7;
+
+   public static final byte CREATESESSION_RESP_V2 = -8;
+
    // Static --------------------------------------------------------
 
    public PacketImpl(final byte type)

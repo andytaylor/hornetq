@@ -24,6 +24,7 @@ import org.hornetq.api.core.SimpleString;
 import org.hornetq.api.core.client.ClientConsumer;
 import org.hornetq.api.core.client.ClientSession;
 import org.hornetq.api.core.client.SendAcknowledgementHandler;
+import org.hornetq.api.core.client.ServerEvent;
 import org.hornetq.core.client.impl.ClientConsumerInternal;
 import org.hornetq.core.client.impl.ClientLargeMessageInternal;
 import org.hornetq.core.client.impl.ClientMessageInternal;
@@ -134,6 +135,11 @@ public abstract class SessionContext
          session.handleReceiveProducerFailCredits(address, credits);
       }
 
+   }
+
+   protected void handleServerEvent(SimpleString address, ServerEvent serverEvent)
+   {
+      notifyServerEvent(address, serverEvent);
    }
 
    public abstract int getCreditsOnSendingFull(MessageInternal msgI);
@@ -265,5 +271,7 @@ public abstract class SessionContext
 
    public abstract void cleanup();
 
+   public abstract void notifyServerEvent(SimpleString address, ServerEvent serverEvent);
 
+   public abstract void checkAddress(SimpleString address) throws HornetQException;
 }

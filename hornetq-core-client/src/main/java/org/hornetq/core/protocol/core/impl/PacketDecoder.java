@@ -17,6 +17,7 @@ import static org.hornetq.core.protocol.core.impl.PacketImpl.CLUSTER_TOPOLOGY_V2
 import static org.hornetq.core.protocol.core.impl.PacketImpl.CLUSTER_TOPOLOGY_V3;
 import static org.hornetq.core.protocol.core.impl.PacketImpl.CREATESESSION;
 import static org.hornetq.core.protocol.core.impl.PacketImpl.CREATESESSION_RESP;
+import static org.hornetq.core.protocol.core.impl.PacketImpl.CREATESESSION_RESP_V2;
 import static org.hornetq.core.protocol.core.impl.PacketImpl.CREATE_QUEUE;
 import static org.hornetq.core.protocol.core.impl.PacketImpl.CREATE_SHARED_QUEUE;
 import static org.hornetq.core.protocol.core.impl.PacketImpl.DELETE_QUEUE;
@@ -79,6 +80,7 @@ import java.io.Serializable;
 import org.hornetq.api.core.HornetQBuffer;
 import org.hornetq.core.client.HornetQClientMessageBundle;
 import org.hornetq.core.protocol.core.Packet;
+import org.hornetq.core.protocol.core.impl.wireformat.ServerEventMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.CheckFailoverMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.CheckFailoverReplyMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.ClusterTopologyChangeMessage;
@@ -87,6 +89,7 @@ import org.hornetq.core.protocol.core.impl.wireformat.ClusterTopologyChangeMessa
 import org.hornetq.core.protocol.core.impl.wireformat.CreateQueueMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.CreateSessionMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.CreateSessionResponseMessage;
+import org.hornetq.core.protocol.core.impl.wireformat.CreateSessionResponseMessageV2;
 import org.hornetq.core.protocol.core.impl.wireformat.CreateSharedQueueMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.DisconnectConsumerMessage;
 import org.hornetq.core.protocol.core.impl.wireformat.DisconnectMessage;
@@ -195,6 +198,11 @@ public abstract class PacketDecoder implements Serializable
          case CREATESESSION_RESP:
          {
             packet = new CreateSessionResponseMessage();
+            break;
+         }
+         case CREATESESSION_RESP_V2:
+         {
+            packet = new CreateSessionResponseMessageV2();
             break;
          }
          case REATTACH_SESSION:
@@ -460,6 +468,11 @@ public abstract class PacketDecoder implements Serializable
          case PacketImpl.CHECK_FOR_FAILOVER_REPLY:
          {
             packet = new CheckFailoverReplyMessage();
+            break;
+         }
+         case PacketImpl.ADDRESS_STATE_CHANGED:
+         {
+            packet = new ServerEventMessage();
             break;
          }
          default:

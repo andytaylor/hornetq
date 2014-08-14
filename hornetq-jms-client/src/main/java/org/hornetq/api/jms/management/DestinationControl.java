@@ -68,4 +68,16 @@ public interface DestinationControl
    @Operation(desc = "Remove messages matching the given filter from the destination", impact = MBeanOperationInfo.ACTION)
    int removeMessages(@Parameter(name = "filter", desc = "A JMS message filter (can be empty)") String filter) throws Exception;
 
+
+   /**
+    * Pauses routing the destination
+    */
+   @Operation(desc = "pause routing messages to this Destination", impact = MBeanOperationInfo.ACTION)
+   void pauseRouting();
+
+   /**
+    * Resumes routing the destination
+    */
+   @Operation(desc = "resume routing messages to this Destination", impact = MBeanOperationInfo.ACTION)
+   void resumeRouting();
 }

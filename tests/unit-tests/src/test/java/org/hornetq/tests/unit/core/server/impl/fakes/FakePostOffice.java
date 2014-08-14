@@ -118,6 +118,25 @@ public class FakePostOffice implements PostOffice
    }
 
    @Override
+   public void pauseAddress(SimpleString address)
+   {
+
+   }
+
+   @Override
+   public void resumeAddress(SimpleString address)
+   {
+
+   }
+
+   @Override
+   public java.util.Set<SimpleString> getPausedAddresses()
+   {
+
+      return null;
+   }
+
+   @Override
    public Binding removeBinding(final SimpleString uniqueName, final Transaction tx) throws Exception
    {
 

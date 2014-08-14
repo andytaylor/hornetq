@@ -157,6 +157,8 @@ public final class ChannelImpl implements Channel
             return version >= 125;
          case PacketImpl.DISCONNECT_V2:
             return version >= 125;
+         case PacketImpl.CREATESESSION_RESP:
+            return version >= 125;
          default:
             return true;
       }

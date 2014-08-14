@@ -642,4 +642,10 @@ public class DelegatingSession implements ClientSessionInternal
    {
       session.scheduleConfirmation(handler, msg);
    }
+
+   @Override
+   public void checkAddress(SimpleString address) throws HornetQException
+   {
+      session.checkAddress(address);
+   }
 }

@@ -124,6 +124,32 @@ public class HornetQServerControlUsingCoreTest extends HornetQServerControlTest
             throw new UnsupportedOperationException();
          }
 
+         @Override
+         public void pauseAddresses()
+         {
+            try
+            {
+               proxy.invokeOperation("pauseAddresses");
+            }
+            catch (Exception e)
+            {
+               e.printStackTrace();
+            }
+         }
+
+         @Override
+         public void resumeAddresses()
+         {
+            try
+            {
+               proxy.invokeOperation("resumeAddresses");
+            }
+            catch (Exception e)
+            {
+               e.printStackTrace();
+            }
+         }
+
          private final CoreMessagingProxy proxy = new CoreMessagingProxy(session, ResourceNames.CORE_SERVER);
 
          public boolean isSharedStore()
