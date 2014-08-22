@@ -18,6 +18,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledExecutorService;
 
 import org.hornetq.api.core.TransportConfiguration;
+import org.hornetq.api.core.TransportConfigurationHelper;
 
 /**
  * A ConnectorFactory is used by the client for creating connectors.
@@ -26,7 +27,7 @@ import org.hornetq.api.core.TransportConfiguration;
  *
  * @author <a href="mailto:tim.fox@jboss.com">Tim Fox</a>
  */
-public interface ConnectorFactory
+public interface ConnectorFactory extends TransportConfigurationHelper
 {
    /**
     * creates a new instance of a connector.
@@ -62,6 +63,4 @@ public interface ConnectorFactory
     * @return whether or not connectors from this factory are reliable
     */
    boolean isReliable();
-
-   void setDefaults(TransportConfiguration connectorConfig);
 }
