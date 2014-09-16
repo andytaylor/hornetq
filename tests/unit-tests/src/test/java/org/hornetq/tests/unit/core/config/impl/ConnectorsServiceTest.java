@@ -38,48 +38,28 @@ public class ConnectorsServiceTest extends UnitTestCase
 {
    private Configuration configuration;
 
-   private ConnectorServiceConfiguration connectorServiceConfiguration;
-
    private InjectedObjectRegistry injectedObjectRegistry;
-
-   private ConnectorService connectorService;
 
    @Before
    public void setUp() throws Exception
    {
       // Setup Configuration
-      connectorServiceConfiguration = new ConnectorServiceConfiguration(FakeConnectorServiceFactory.class.getCanonicalName(),
-                                                                        new HashMap<String, Object>(), null);
-      List<ConnectorServiceConfiguration> connectorServiceConfigurations = new ArrayList<ConnectorServiceConfiguration>();
-      connectorServiceConfigurations.add(connectorServiceConfiguration);
       configuration = new ConfigurationImpl();
-      configuration.setConnectorServiceConfigurations(connectorServiceConfigurations);
-
-      connectorService = new FakeConnectorService();
       injectedObjectRegistry = new InjectedObjectRegistry();
    }
 
    @Test
    public void testConnectorsServiceUsesInjectedConnectorServiceFactory() throws Exception
    {
+      ConnectorServiceConfiguration connectorServiceConfiguration = new ConnectorServiceConfiguration(null, new HashMap<String, Object>(), "myfact");
       ConnectorService connectorService = new FakeConnectorService();
       ConnectorServiceFactory connectorServiceFactory = new FakeConnectorServiceFactory(connectorService);
-      injectedObjectRegistry.addConnectorServiceFactory(connectorServiceFactory);
+      injectedObjectRegistry.addConnectorServiceFactory(connectorServiceFactory, connectorServiceConfiguration);
       ConnectorsService connectorsService = new ConnectorsService(configuration, null, null, null, injectedObjectRegistry);
       connectorsService.start();
 
       assertTrue(connectorsService.getConnectors().size() == 1);
       assertTrue(connectorsService.getConnectors().contains(connectorService));
-   }
-
-   @Test
-   public void testConnectorServiceCreatesNewConnectorServiceFactoryWhenNoInjectedOnesExists() throws Exception
-   {
-      ConnectorsService connectorsService = new ConnectorsService(configuration, null, null, null, injectedObjectRegistry);
-      connectorsService.start();
-
-      assertTrue(connectorsService.getConnectors().size() == 1);
-      assertFalse(connectorsService.getConnectors().contains(connectorService));
    }
 
 }

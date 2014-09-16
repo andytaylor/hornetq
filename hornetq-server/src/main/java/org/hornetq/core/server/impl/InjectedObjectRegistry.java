@@ -14,6 +14,7 @@
 package org.hornetq.core.server.impl;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
 import org.hornetq.api.core.Interceptor;
+import org.hornetq.api.core.Pair;
+import org.hornetq.core.config.ConnectorServiceConfiguration;
 import org.hornetq.core.server.ConnectorServiceFactory;
 
 /**
@@ -41,13 +44,13 @@ public class InjectedObjectRegistry
 
    private List<Interceptor> outgoingInterceptors;
 
-   private Map<String, ConnectorServiceFactory> connectorServiceFactories;
+   private Map<String, Pair<ConnectorServiceFactory, ConnectorServiceConfiguration>> connectorServiceFactories;
 
    public InjectedObjectRegistry()
    {
       this.incomingInterceptors = Collections.synchronizedList(new ArrayList<Interceptor>());
       this.outgoingInterceptors = Collections.synchronizedList(new ArrayList<Interceptor>());
-      this.connectorServiceFactories = new ConcurrentHashMap<String, ConnectorServiceFactory>();
+      this.connectorServiceFactories = new ConcurrentHashMap<>();
    }
 
    public ExecutorService getExecutorService()
@@ -70,24 +73,19 @@ public class InjectedObjectRegistry
       this.scheduledExecutorService = scheduledExecutorService;
    }
 
-   public void addConnectorServiceFactory(ConnectorServiceFactory connectorServiceFactory)
+   public void addConnectorServiceFactory(ConnectorServiceFactory connectorServiceFactory, ConnectorServiceConfiguration configuration)
    {
-      connectorServiceFactories.put(connectorServiceFactory.getClass().getCanonicalName(), connectorServiceFactory);
+      connectorServiceFactories.put(configuration.getConnectorName(), new Pair<>(connectorServiceFactory, configuration));
    }
 
-   public void removeConnectorServiceFactory(String className)
+   public void removeConnectorServiceFactory(ConnectorServiceConfiguration configuration)
    {
-      connectorServiceFactories.remove(className);
+      connectorServiceFactories.remove(configuration.getConnectorName());
    }
 
-   public ConnectorServiceFactory getConnectorServiceFactory(String className)
+   public Collection<Pair<ConnectorServiceFactory, ConnectorServiceConfiguration>> getConnectorServiceFactories()
    {
-      return connectorServiceFactories.get(className);
-   }
-
-   public Map<String, ConnectorServiceFactory> getConnectorServiceFactories()
-   {
-      return Collections.unmodifiableMap(connectorServiceFactories);
+      return connectorServiceFactories.values();
    }
 
    public void addIncomingInterceptor(Interceptor interceptor)
